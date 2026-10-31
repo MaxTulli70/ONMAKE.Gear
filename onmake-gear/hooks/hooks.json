@@ -1,1 +1,1 @@
-{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"${CLAUDE_PLUGIN_ROOT}/scripts/regola.sh"}]}]}}
+{"hooks":{"SessionStart":[{"matcher":"startup|resume|clear|compact","hooks":[{"type":"command","command":"sh \"${CLAUDE_PLUGIN_ROOT}/scripts/regola.sh\"","timeout":15,"statusMessage":"Loading ONMAKE Gear..."}]}]}}
