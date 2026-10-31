@@ -1,6 +1,6 @@
 ---
 name: gear
-description: ONMAKE Gear. Usa quando inizia un compito, cambia il tipo di lavoro o un risultato sbaglia: sceglie modello ed effort più bassi che danno qualità eccellente, picchi brevi, STATO.md, retromarcia REVERSE per gli errori.
+description: ONMAKE Gear. Use when a task starts, the kind of work changes, or a result is wrong: pick the lowest model and effort that still gives excellent quality, short peaks only for the essential step, STATO.md per job, REVERSE gear for errors. / Sceglie modello ed effort più bassi con qualità eccellente.
 ---
 
-Segui la regola in `GEAR.md` (stessa cartella del repository, `portabile/GEAR.md`): livelli LEGGERO, MEDIO, ALTO, MASSIMO; nel dubbio sali, scendi appena finito il passo difficile; picco solo per il passo essenziale; STATO.md per ogni lavoro; REVERSE parte dal livello LEGGERO.
+Follow the rule in `portabile/GEAR.md` (repository root). Levels LIGHT, MEDIUM, HIGH, MAX; when in doubt go up, go down once the hard step is done; peak only for the essential step; keep STATO.md per job; REVERSE starts at LIGHT. / Segui la regola in `portabile/GEAR.md`.
