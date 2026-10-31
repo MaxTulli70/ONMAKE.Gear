@@ -32,6 +32,8 @@ claude plugin install onmake-gear@onmake
 
 Versione 0.1.0, in prova.
 
+**Riga di stato.** Mostra la marcia attuale, es. `⚙ LIGHT ▼` (freccia = ultimo salto su/giù, `⚙ –` = nessun sotto-agente gear). Attivazione: in `~/.claude/settings.json` metti `statusLine` = `{"type":"command","command":"python3 /percorso/onmake-gear/scripts/statusline.py"}`.
+
 ## Contatore token
 `python3 onmake-gear/scripts/contatore.py [trascrizione.jsonl]` mostra i token per modello e per livello gear (solo python3 standard). Claude Code salva l'uso dei sotto-agenti in file propri (`<sessione>/subagents/agent-*.jsonl`, tipo nel `.meta.json`): i sotto-agenti sono contati a parte e la chat principale è una riga sola. I duplicati dello streaming sono uniti per id messaggio.
 
