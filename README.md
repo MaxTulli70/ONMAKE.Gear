@@ -23,7 +23,7 @@ All'avvio di ogni sessione di Claude Code, ONMAKE Gear dà alla sessione una reg
 ## Installazione
 
 ```
-claude plugin marketplace add MaxTulli70/O.Gear
+claude plugin marketplace add MaxTulli70/ONMAKE.Gear
 claude plugin install onmake-gear@onmake
 ```
 
