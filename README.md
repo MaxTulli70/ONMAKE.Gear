@@ -1,4 +1,4 @@
-# ONMAKE GEAR
+# ONMAKE Gear
 
 Il modello giusto al momento giusto per il compito dato, con l'effort allineato al compito: un lavoro ottimo con token ottimizzati, verso il risparmio, con qualità di lavoro eccellente.
 

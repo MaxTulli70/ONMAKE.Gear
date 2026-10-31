@@ -1,4 +1,4 @@
-# ONMAKE GEAR (regola portabile, vale per qualsiasi AI)
+# ONMAKE Gear (regola portabile, vale per qualsiasi AI)
 
 Obiettivo: lavoro eccellente con meno token possibili. Per ogni compito scegli il livello più basso che garantisce qualità eccellente.
 
