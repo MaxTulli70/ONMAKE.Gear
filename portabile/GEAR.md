@@ -1,7 +1,7 @@
 # ONMAKE Gear (portable rule, valid for any AI) / regola portabile, vale per qualsiasi AI
 
-**EN.** Goal: excellent work with as few tokens as possible. For every task pick the lowest level that guarantees excellent quality.
-**IT.** Obiettivo: lavoro eccellente con meno token possibili. Per ogni compito scegli il livello più basso che garantisce qualità eccellente.
+**EN.** Goal: excellent work with as few tokens as possible. Always START at LIGHT and go up only when it fails (check failed, result differs from the request) or when failure is presumed (bug cause unknown after one try, many files to understand together, design/architecture, xTdC calculations and standards, login and security, costly decisions): then start directly at the level needed, without failing first. When going up, pass a short brief of what was tried.
+**IT.** Obiettivo: lavoro eccellente con meno token possibili. Parti SEMPRE da LEGGERO e sali solo quando non riesce (controllo fallito, risultato diverso dalla richiesta) o si presume che non riesca (causa del bug ignota dopo una prova, molti file da capire insieme, progetto/architettura, calcoli e norme xTdC, login e sicurezza, decisioni costose): allora parti direttamente dal livello che serve, senza prima fallire. Al salire passa un brief breve con cosa è stato provato.
 
 ## Levels / Livelli (not model names / non nomi di modelli)
 1. LIGHT / LEGGERO: checks, reads, status, short answers; corrections (REVERSE) start here. / controlli, letture, stato, risposte brevi; le correzioni (REVERSE) partono da qui.
@@ -20,7 +20,7 @@
 Web chats cannot read local files: paste this file and your STATO.md at the start. / Le chat web non leggono file locali: incolla questo file e lo STATO.md all'inizio.
 
 ## Rules / Regole
-- When in doubt go up one level; go down as soon as the hard step is done. / Nel dubbio sali di un livello; scendi appena il passo difficile finisce.
+- Quality is never sacrificed; shift down at once, even several levels, as soon as the work gets simpler (cause found, only mechanical work left, hard step closed). / La qualità non si sacrifica; scendi subito, anche di più livelli, appena il lavoro si semplifica (causa trovata, resta lavoro meccanico, passo difficile chiuso).
 - Peak: for a very complex step use the maximum, only for that step, then return to the normal level. / Picco: per un passo molto complesso usa il massimo, solo per quel passo, poi torna al livello normale.
 - Switch model only between operations, with one line saying why. / Cambia modello solo tra un'operazione e l'altra, con una riga che dice perché.
 - Keep a short STATO.md per job (decided, done, missing, files touched): update it before switching model or closing, read it at session start instead of rereading everything. / STATO.md breve per ogni lavoro (deciso, fatto, manca, file toccati): aggiornalo prima di cambiare modello o chiudere, leggilo a inizio sessione.
