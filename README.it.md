@@ -2,6 +2,9 @@
 
 Il modello giusto al momento giusto per il compito dato, con l'effort allineato al compito: un lavoro ottimo con token ottimizzati, verso il risparmio, con qualità di lavoro eccellente.
 
+![ONMAKE Gear: scala a quattro gradini LIGHT, MEDIUM, HIGH, MAX; si parte da LIGHT, si sale se il controllo fallisce, si scende quando il lavoro si semplifica; REVERSE torna a STATO.md e corregge da LIGHT](docs/gear-schema.it.svg)
+
+
 ## Cosa fa (IT)
 
 All'avvio di ogni sessione di Claude Code, ONMAKE Gear dà alla sessione una regola:
