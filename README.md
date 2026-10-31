@@ -20,3 +20,6 @@ claude plugin install onmake-gear@onmake
 License MIT. Version 0.1.0, in testing.
 
 Italiano: see [README.it.md](README.it.md).
+
+## Token counter / Contatore token
+`python3 onmake-gear/scripts/contatore.py [transcript.jsonl]` prints tokens per model and per gear level (stdlib only). Claude Code stores sub-agent usage in its own files (`<session>/subagents/agent-*.jsonl`, type in `.meta.json`), so sub-agents are counted separately and the main chat is shown as one row. Streamed duplicates are merged by message id.
