@@ -4,7 +4,7 @@ Il modello giusto al momento giusto per il compito dato, con l'effort allineato 
 
 ## Cosa fa
 
-All'avvio di ogni sessione di Claude Code, GEAR dà alla sessione una regola:
+All'avvio di ogni sessione di Claude Code, ONMAKE Gear dà alla sessione una regola:
 
 - sceglie la coppia modello + effort più bassa che garantisce qualità eccellente;
 - sale se il controllo fallisce o il compito è più difficile, scende a passo difficile finito;
