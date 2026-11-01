@@ -48,14 +48,14 @@ function riga(d: Dati, compact: boolean) {
 // Desktop: the bar is drawn as SVG, so the type is small and even, every cell is the same size and the level is a pill.
 // shortcut: text widths are estimated (7.4 px per character at 13 px), so a very long label may sit a little loose.
 const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-// Width per character at 13 px: capitals and digits are wider than lower case, spaces narrower.
-const largo = (t: string) => Math.ceil([...t].reduce((w, ch) => w + (ch === ' ' ? 3.8 : /[A-Z0-9%]/.test(ch) ? 8.8 : /[▶⏸✓✗↓↑]/.test(ch) ? 11 : 7.2), 0))
-const STILE = '<style>text{font:400 13px -apple-system,system-ui,sans-serif;fill:#55554f}.sm{font-size:11px;letter-spacing:.3px}.mu{fill:#8a8a84}.v{fill:#d6d6cf}@media(prefers-color-scheme:dark){text{fill:#c9c9d1}.mu{fill:#8d8d97}.v{fill:#3a3a42}}</style>'
+// Width per character at 14 px: capitals and digits are wider than lower case, spaces narrower.
+const largo = (t: string) => Math.ceil([...t].reduce((w, ch) => w + (ch === ' ' ? 4.1 : /[A-Z0-9%]/.test(ch) ? 9.5 : /[▶⏸✓✗↓↑]/.test(ch) ? 12 : 7.8), 0))
+const STILE = '<style>text{font:400 14px -apple-system,system-ui,sans-serif;fill:#55554f}.sm{font-size:12px;letter-spacing:.3px}.mu{fill:#8a8a84}.v{fill:#d6d6cf}@media(prefers-color-scheme:dark){text{fill:#c9c9d1}.mu{fill:#8d8d97}.v{fill:#3a3a42}}</style>'
 
 function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null) {
   const out: string[] = []
   let x = 0
-  const H = 24, Y = 16.5
+  const H = 26, Y = 18
   const t = (s: string, cls = '', col?: string) => {
     out.push(`<text x="${x}" y="${Y}"${cls ? ` class="${cls}"` : ''}${col ? ` style="fill:${col}"` : ''}>${esc(s)}</text>`)
     x += largo(s)
@@ -72,7 +72,7 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null) {
   const k = d.livello ? MARCE.indexOf(d.livello) : -1
   MARCE.forEach((m, i) => {
     const h = 4 + i * 2.6
-    out.push(`<rect x="${i * 5.5}" y="${18 - h}" width="4" height="${h}" rx="1"${i <= k ? ` style="fill:${tinta ? COL[m] : '#55554f'}"` : ' class="v"'}/>`)
+    out.push(`<rect x="${i * 5.5}" y="${20 - h}" width="4" height="${h}" rx="1"${i <= k ? ` style="fill:${tinta ? COL[m] : '#55554f'}"` : ' class="v"'}/>`)
   })
   x = 5 * 5.5 + 6
   if (k >= 0) {
@@ -265,7 +265,7 @@ export const register: Register = (on, options) => {
     const testaDesk = (
       <Box flexDirection="row" alignItems="center" gap={1} width={e.props.bodyColumns}>
         <Box flexGrow={1} flexShrink={1} overflow="hidden">
-          <Svg source={riga1.source} alt={riga(d, compact)} width={riga1.width} height={24} />
+          <Svg source={riga1.source} alt={riga(d, compact)} width={riga1.width} height={26} />
         </Box>
         <Box flexShrink={0} flexDirection="row" gap={0} alignItems="center">
           {/* A button takes only text and the app does not follow a link inside an SVG, so a transparent button lies over the logo and opens the site. */}
