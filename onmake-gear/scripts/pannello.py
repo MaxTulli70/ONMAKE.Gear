@@ -216,7 +216,7 @@ def breve(r):
                 fermi=sum(1 for x in ag if x["stato"] == "fermo"), completi=sum(1 for x in ag if x["fine"]),
                 interrotti=sum(1 for x in ag if x["stato"] == "interrotto"),
                 attivi=[dict(liv=x["liv"], tipo=x["tipo"], nome=x["nome"], desc=x["desc"][:40], model=x["model"]) for x in lav],
-                tok=tok, stok=r["tok"], sag=len(r["ag"]), cr=r["cr"], reale=round(r["reale"], 2), opus=round(r["opus"], 2), risp=r["risp"], perc=perc,
+                tok=tok, stok=r["tok"], sel=int(r["el"] or 0), sag=len(r["ag"]), cr=r["cr"], reale=round(r["reale"], 2), opus=round(r["opus"], 2), risp=r["risp"], perc=perc,
                 fatti=fatti, tot=tot, el=int(el), eta=(int(eta) if eta else None),
                 righe=[dict(liv=x["liv"], nome=x["nome"], tipo=x["tipo"], dir=x["dir"], model=x["model"], tok=x["v"][0] + x["v"][1] + x["v"][2], fine=x["fine"],
                             stato=x["stato"], ago=int(x["ago"] or 0), desc=x["desc"][:36]) for x in vis])
