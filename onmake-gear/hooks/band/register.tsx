@@ -80,15 +80,15 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null) {
     const nome = d.livello!.toUpperCase()
     out.push(`<text x="${x}" y="${Y}" class="sm"${tinta ? ` style="fill:${COL[d.livello!]}"` : ''}>${esc(nome)}</text>`)
     x += Math.ceil(largo(nome) * 0.85); sp(4)
-    t(`${k + 1}/5${d.dir === '▲' ? ' ▲' : d.dir === '▼' ? ' ▼' : ''}`, 'mu')
+    if (d.dir === '▲' || d.dir === '▼') t(d.dir, 'mu')
   } else t('nessuna marcia', 'mu')
   // The model the chat is using now, e.g. 'opus-5-5' -> 'Opus 5.5'.
   // Model and effort the chat is using now, then the tokens of the current job per model.
   const mod = p?.model || d.chat
   if (mod) { sep(); t('chat', 'mu'); sp(5); t(nomeModello(mod)); if (p?.effort) { sp(5); t(`effort ${p.effort}`, 'mu') } }
-  sep()
-  if (d.tokmod && d.tokmod.length > 0) d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); t(nomeModello(m).split(' ')[0], 'mu'); sp(4); t(kt(n)) })
-  else t(`${kt(d.tok)} tok`, 'mu')
+  // Tokens of the current job per model; nothing while the job has used none yet.
+  if (d.tokmod && d.tokmod.length > 0) { sep(); d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); t(nomeModello(m).split(' ')[0], 'mu'); sp(4); t(kt(n)) }) }
+  else if (d.tok > 0) { sep(); t(`${kt(d.tok)} tok`, 'mu') }
   if (!compact) {
     // Only what is useful now: the current job (since your last message); counts at zero and a missing task list are left out.
     const n: [number, string, string | undefined][] = [[d.lavorano, '▶', COL.medium], [d.fermi, '⏸', COL.high], [d.completi, '✓', undefined], [d.interrotti, '✗', undefined]]
@@ -99,7 +99,7 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null) {
     }
     // Who is working now and on what: the working agent and its task, else the main chat and the current step or your last request.
     const a0 = d.attivi[0]
-    sep()
+    if (a0 || d.compito) sep()
     if (a0) t(`▶ ${a0.nome}: ${a0.desc.slice(0, 40)}`, '', tinta ? COL[a0.liv] ?? GRIGIO : undefined)
     else if (d.compito) t(`chat: ${d.compito.slice(0, 48)}`)
     if (d.perc !== null) { sep(); celle(d.perc, COL.medium); t(`${Math.round(d.perc * 100)}% (${d.fatti}/${d.tot} passi)`) }
