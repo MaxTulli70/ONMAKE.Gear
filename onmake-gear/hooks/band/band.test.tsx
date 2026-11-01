@@ -33,7 +33,7 @@ test('desktop: the bar is an Svg with the level and the share', async ($, on) =>
   const svg = await ui.find({ type: 'Svg' })
   expect((svg?.props as { source?: string })?.source).toContain('MEDIUM')
   expect((svg?.props as { source?: string })?.source).toContain('40%')
-  expect(JSON.stringify(ui.tree ?? (await ui.find({ type: 'Box' })))).toContain('https://www.onmake.it')
+  expect(await ui.find({ key: 'onmake' })).toBeTruthy()
   expect(await ui.find({ key: 'tendina' })).toBeTruthy()
   expect(await ui.find({ key: 'pannello' })).toBeTruthy()
   expect(await ui.find({ type: 'Text', text: /job/ })).toBeTruthy()
@@ -66,5 +66,19 @@ test('control: stop, resume and send call the session tools', async ($, on) => {
 
   await ui.press({ key: 'invia' })
   expect(calls[2].message).toBe('fai la prova')
+  await ui.unmount()
+})
+
+test('desktop: the logo button opens the site', async ($, on) => {
+  seed(on)
+  const runs: string[][] = []
+  on('process.run', (_: unknown, e: { argv?: string[]; args?: string[] }) => {
+    runs.push((e.argv ?? e.args ?? []) as string[])
+    return { value: { exitCode: 0, stdout: 'Darwin', stderr: '' } }
+  })
+  on('env.get', () => ({ value: undefined }))
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await ui.press({ key: 'onmake' })
+  expect(JSON.stringify(runs)).toContain('https://www.onmake.it')
   await ui.unmount()
 })

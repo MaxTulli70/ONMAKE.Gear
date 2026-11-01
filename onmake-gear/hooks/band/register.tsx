@@ -78,9 +78,8 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean) {
       vivi.forEach(([k, g, col], i) => { if (i) sp(6); t(`${g} ${k}`, col ? '' : 'mu', tinta ? col : undefined) })
     }
     if (d.perc !== null) { sep(); celle(d.perc, COL.medium); t(`${Math.round(d.perc * 100)}% (${d.fatti}/${d.tot} passi)`) }
-    sep()
-    if (d.eta !== null) { celle(d.el / (d.el + d.eta), COL.high); t(`${dur(d.el)}, restano ~${dur(d.eta)}`) }
-    else t(`⏱ ${dur(d.el)}`, 'mu')
+    // Time only as an estimate of what is left, when a task list allows one; a bare timer told nothing.
+    if (d.eta !== null) { sep(); t(`restano ~${dur(d.eta)}`, '', tinta ? COL.high : undefined) }
   }
   const w = Math.ceil(x + 2)
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${H}" viewBox="0 0 ${w} ${H}">${STILE}${out.join('')}</svg>`, width: w }
@@ -234,8 +233,15 @@ export const register: Register = (on, options) => {
           <Svg source={riga1.source} alt={riga(d, compact)} width={riga1.width} height={24} />
         </Box>
         <Box flexShrink={0} flexDirection="row" gap={0} alignItems="center">
-          {/* A button takes only text, so the logo is an interactive SVG whose own link opens the site. */}
-          <Svg source={LOGO} alt="ONMAKE, apre onmake.it" width={32} height={34} isInteractive />
+          {/* A button takes only text and the app does not follow a link inside an SVG, so a transparent button lies over the logo and opens the site. */}
+          <Box position="relative">
+            <Svg source={LOGO} alt="ONMAKE" width={32} height={34} />
+            <Box position="absolute" top={0} left={0}>
+              <Button key="onmake" plain onPress={() => apriSito($).catch(() => $.ui.toast('Gear: sito non aperto'))}>
+                <Text>{'\u2003\u2003'}</Text>
+              </Button>
+            </Box>
+          </Box>
           {tasto('tendina', open ? '⬆' : '⬇', () => apriChiudi($))}
           {tasto('pannello', '⬈', () => apriPannello($).catch(() => $.ui.toast('Gear: pannello non aperto')))}
         </Box>
