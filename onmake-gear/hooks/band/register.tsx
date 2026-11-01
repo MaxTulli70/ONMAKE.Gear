@@ -42,31 +42,31 @@ function riga(d: Dati, compact: boolean) {
 }
 
 // Desktop: the bar is drawn as SVG, so the type is small and even, every cell is the same size and the level is a pill.
-// shortcut: text widths are estimated (6.3 px per character at 11 px), so a very long label may sit a little loose.
+// shortcut: text widths are estimated (7.4 px per character at 13 px), so a very long label may sit a little loose.
 const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-const largo = (t: string) => Math.ceil([...t].length * 6.3)
-const STILE = '<style>text{font:500 11px -apple-system,system-ui,sans-serif;fill:#55554f}.mu{fill:#8a8a84}.v{fill:#d6d6cf}.pl{font-weight:650;fill:#1c1c1a}@media(prefers-color-scheme:dark){text{fill:#c9c9d1}.mu{fill:#8d8d97}.v{fill:#3a3a42}}</style>'
+const largo = (t: string) => Math.ceil([...t].length * 7.4)
+const STILE = '<style>text{font:500 13px -apple-system,system-ui,sans-serif;fill:#55554f}.mu{fill:#8a8a84}.v{fill:#d6d6cf}.pl{font-weight:650;fill:#1c1c1a}@media(prefers-color-scheme:dark){text{fill:#c9c9d1}.mu{fill:#8d8d97}.v{fill:#3a3a42}}</style>'
 
 function svgRiga(d: Dati, tinta: boolean, compact: boolean) {
   const out: string[] = []
   let x = 0
-  const H = 22, Y = 15
+  const H = 24, Y = 16.5
   const t = (s: string, cls = '', col?: string) => {
     out.push(`<text x="${x}" y="${Y}"${cls ? ` class="${cls}"` : ''}${col ? ` style="fill:${col}"` : ''}>${esc(s)}</text>`)
     x += largo(s)
   }
   const sp = (n = 8) => { x += n }
-  const sep = () => { sp(6); out.push(`<circle cx="${x}" cy="11" r="1.3" class="v" style="fill:#b9b9b2"/>`); sp(8) }
+  const sep = () => { sp(6); out.push(`<circle cx="${x}" cy="12" r="1.3" class="v" style="fill:#b9b9b2"/>`); sp(8) }
   const celle = (f: number, col: string) => {
     const n = Math.max(0, Math.min(5, Math.round(f * 5)))
-    for (let i = 0; i < 5; i++) out.push(`<rect x="${x + i * 9}" y="6.5" width="7" height="9" rx="1.6"${i < n ? ` style="fill:${tinta ? col : '#8a8a84'}"` : ' class="v"'}/>`)
-    x += 45 + 4
+    for (let i = 0; i < 5; i++) out.push(`<rect x="${x + i * 10}" y="6.5" width="8" height="11" rx="1.8"${i < n ? ` style="fill:${tinta ? col : '#8a8a84'}"` : ' class="v"'}/>`)
+    x += 50 + 4
   }
   const lv = d.livello ? d.livello.toUpperCase() : 'nessuna marcia'
   const pill = `⚙ ${lv}${d.dir === '▲' || d.dir === '▼' ? ' ' + d.dir : ''}`
-  const pw = largo(pill) + 12
-  out.push(`<rect x="0" y="2.5" width="${pw}" height="17" rx="8.5" style="fill:${d.livello && tinta ? COL[d.livello] : '#d6d6cf'}"/>`)
-  out.push(`<text x="6" y="${Y}" class="pl">${esc(pill)}</text>`)
+  const pw = largo(pill) + 14
+  out.push(`<rect x="0" y="2" width="${pw}" height="20" rx="10" style="fill:${d.livello && tinta ? COL[d.livello] : '#d6d6cf'}"/>`)
+  out.push(`<text x="7" y="${Y}" class="pl">${esc(pill)}</text>`)
   x = pw
   sep(); t(`${kt(d.tok)} tok`, 'mu')
   if (!compact) {
@@ -230,7 +230,7 @@ export const register: Register = (on, options) => {
     const testaDesk = (
       <Box flexDirection="row" alignItems="center" gap={2} width={e.props.bodyColumns}>
         <Box flexGrow={1} flexShrink={1} overflow="hidden">
-          <Svg source={riga1.source} alt={riga(d, compact)} width={riga1.width} height={22} />
+          <Svg source={riga1.source} alt={riga(d, compact)} width={riga1.width} height={24} />
         </Box>
         <Box flexShrink={0} flexDirection="row" gap={1} alignItems="center">
           <Svg source={LOGO} alt="ONMAKE" width={19} height={22} />
