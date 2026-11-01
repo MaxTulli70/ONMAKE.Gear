@@ -320,7 +320,7 @@ export const register: Register = (on, options) => {
               </Button>
             </Box>
           </Box>
-          {tasto('tendina', open ? '↑' : '↓', () => apriChiudi($))}
+          {tasto('tendina', open ? '↓' : '↑', () => apriChiudi($))}
           {tasto('pannello', '↗', () => apriPannello($).catch(() => $.ui.toast('Gear: pannello non aperto')))}
         </Box>
       </Box>
