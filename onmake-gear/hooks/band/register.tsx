@@ -95,9 +95,11 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null) {
     // Only what is useful now: the current job (since your last message); counts at zero and a missing task list are left out.
     const n: [number, string, string | undefined][] = [[d.lavorano, '▶', COL.medium], [d.fermi, '⏸', COL.high], [d.completi, '✓', undefined], [d.interrotti, '✗', undefined]]
     const vivi = n.filter(([k]) => k > 0)
-    if (vivi.length > 0) {
+    const tokAg = d.righe.reduce((a, r) => a + (r.tok || 0), 0)
+    if (vivi.length > 0 || tokAg > 0) {
       sep(); t('agenti', 'mu'); sp(5)
       vivi.forEach(([k, g, col], i) => { if (i) sp(6); t(`${g} ${k}`, col ? '' : 'mu', tinta ? col : undefined) })
+      if (tokAg > 0) { sp(8); t(`${kt(tokAg)} token`) }
     }
     // Who is working now and on what: the working agent and its task, else the main chat and the current step or your last request.
     const a0 = d.attivi[0]
@@ -137,9 +139,9 @@ function svgAgente(x: { stato: string; liv: string; nome: string; dir: string; m
 }
 
 // A plain label drawn like the bar, so it has the bar's text size.
-function svgScritta(s: string) {
+function svgScritta(s: string, col?: string) {
   const w = Math.ceil(largo(s) + 2)
-  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="24" viewBox="0 0 ${w} 24">${STILE}<text x="0" y="17" class="mu">${esc(s)}</text></svg>`, width: w }
+  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="24" viewBox="0 0 ${w} 24">${STILE}<text x="0" y="17"${col ? ` style="fill:${col}"` : ' class="mu"'}>${esc(s)}</text></svg>`, width: w }
 }
 
 async function apriSito($: EngineInterface) {
@@ -285,6 +287,19 @@ export const register: Register = (on, options) => {
 
     const desk = e.surface === 'desktop'
     const { Svg } = $.ui.resolve(e) as unknown as { Svg: (p: { source: string; alt: string; width?: number; height?: number; isInteractive?: boolean }) => JSX.Element }
+    // Small button on desktop: the word drawn like the bar, a transparent button laid over it (as on the logo).
+    const tastino = (k: string, s: string, fn: () => unknown, col?: string) => {
+      if (!desk) return tasto(k, s, fn, col)
+      const g = svgScritta(s, col)
+      return (
+        <Box key={k} position="relative">
+          <Svg source={g.source} alt={s} width={g.width} height={24} />
+          <Box position="absolute" top={0} left={0} right={0} bottom={0} justifyContent="center" alignItems="center" overflow="hidden">
+            <Button key={k} plain onPress={fn}><Text>{'\u2003\u2003\u2003'}</Text></Button>
+          </Box>
+        </Box>
+      )
+    }
     const tasto = (k: string, s: string, fn: () => unknown, col?: string) => {
       // A Button holds only strings and Text (an Svg inside is refused), so its label is Text on every surface.
       return <Button key={k} plain onPress={fn}><Text color={col} dimColor={!col}>{s}</Text></Button>
@@ -371,12 +386,14 @@ export const register: Register = (on, options) => {
           {lista.length > 0
             ? <Box flexDirection="row" gap={1} alignItems="center">{desk ? scritta('Sessione') : null}<Select key="sessione" label={desk ? '' : 'Sessione'} options={lista.map(x => ({ value: x.id, label: x.nome || x.id.slice(0, 8) }))} value={sel || lista[0].id} onSelect={v => void update($, scelta, () => v)} /></Box>
             : tasto('ricarica', 'Carica sessioni ↻', () => caricaSessioni($))}
-          {tasto('ferma', 'Ferma', () => azione($, 'ferma'), c('max'))}
-          {tasto('riprendi', 'Riprendi', () => azione($, 'riprendi'), c('medium'))}
+          {tastino('ferma', 'Ferma', () => azione($, 'ferma'), c('max'))}
+          {tastino('riprendi', 'Riprendi', () => azione($, 'riprendi'), c('medium'))}
         </Box>
         <Box width={e.props.bodyColumns} flexDirection="row" gap={1} alignItems="flex-start">
-          {desk ? scritta('Comando') : null}
+          {desk ? <Box flexShrink={0}>{scritta('Comando')}</Box> : null}
+          <Box flexGrow={1} flexShrink={1}>
           <Input key="comando" rows={2} label={desk ? '' : 'Comando'} placeholder="Scrivi il comando per la sessione scelta e premi Invio" value={cmd} submitLabel="invia" onInput={v => void update($, comando, () => v)} onSubmit={v => void azione($, 'invia', v)} />
+          </Box>
         </Box>
       </Box>,
     )
