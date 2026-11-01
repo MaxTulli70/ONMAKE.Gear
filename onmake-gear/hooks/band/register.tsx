@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.67'
+const VERSIONE = '0.6.69'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -232,7 +232,7 @@ function svgBarra(pl: Record<string, [number, number]>, tot: number, tinta: bool
 
 // Dashboard gauge: half dial with the 5 gears as coloured sectors, needle on the active one, arrow up/down.
 const livChat = (m: string) => (/haiku/.test(m) ? 'light' : /sonnet/.test(m) ? 'medium' : /opus/.test(m) ? 'opus' : null)
-function svgCruscotto(livello: string | null, dir: string, tinta: boolean, lavora: boolean) {
+function svgCruscotto(livello: string | null, dir: string, tinta: boolean, lavora: boolean, impegno = '') {
   const M = ['light', 'medium', 'high', 'opus', 'max'], cx = 60, cy = 58, R = 48
   const pt = (a: number, r: number) => `${(cx + r * Math.cos(a)).toFixed(1)} ${(cy - r * Math.sin(a)).toFixed(1)}`
   const k = livello ? M.indexOf(livello) : -1
@@ -243,14 +243,18 @@ function svgCruscotto(livello: string | null, dir: string, tinta: boolean, lavor
     out.push(`<path d="M ${pt(a0, R)} A ${R} ${R} 0 0 1 ${pt(a1, R)}" style="fill:none;stroke:${tinta ? COL[m] : '#8a8a84'};stroke-width:${on ? 10 : 7};opacity:${on ? 1 : 0.35}"${on && lavora ? ' class="gp"' : ''}/>`)
   })
   if (k >= 0) {
-    const a = Math.PI - ((k + 0.5) * Math.PI) / 5
-    out.push(`<line x1="${cx}" y1="${cy}" x2="${pt(a, R - 12).replace(' ', '" y2="')}" style="stroke:#55554f;stroke-width:2.5;stroke-linecap:round"/>`)
+    const fr = ({ low: 0.08, medium: 1 / 3, high: 2 / 3, max: 0.92 } as Record<string, number>)[impegno] ?? 0.5
+    const a = Math.PI - ((k + fr) * Math.PI) / 5
+    const [amp, sec] = ({ low: [2, 2], medium: [4, 1.4], high: [7, 0.9], max: [11, 0.5] } as Record<string, number[]>)[impegno] ?? [4, 1.4]
+    const sw = lavora ? `<animateTransform attributeName="transform" type="rotate" values="${-amp} ${cx} ${cy};${amp} ${cx} ${cy};${-amp} ${cx} ${cy}" dur="${sec}s" repeatCount="indefinite"/>` : ''
+    out.push(`<line x1="${cx}" y1="${cy}" x2="${pt(a, R - 12).replace(' ', '" y2="')}" style="stroke:#55554f;stroke-width:2.5;stroke-linecap:round">${sw}</line>`)
   }
   out.push(`<circle cx="${cx}" cy="${cy}" r="4" style="fill:#55554f"/>`)
   const nome = k >= 0 ? M[k].toUpperCase() : 'ferma'
   out.push(`<text x="${cx}" y="${cy + 16}" text-anchor="middle" class="sm"${k >= 0 && tinta ? ` style="fill:${COL[M[k]]}"` : ''}>${nome}</text>`)
+  if (k >= 0 && impegno) out.push(`<text x="${cx}" y="${cy + 27}" text-anchor="middle" class="mu">${impegno}</text>`)
   if (dir === '▲' || dir === '▼') out.push(`<text x="${cx + 34}" y="${cy + 16}" text-anchor="middle" style="fill:${tinta ? (dir === '▲' ? COL.high : COL.medium) : '#55554f'}">${dir === '▲' ? '↑' : '↓'}</text>`)
-  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80" viewBox="0 0 120 80">${STILE}${out.join('')}</svg>`, width: 120 }
+  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="90" viewBox="0 0 120 90">${STILE}${out.join('')}</svg>`, width: 120 }
 }
 
 // Grid of the 4 gears: colour, name, agents used and their tokens in this session.
@@ -366,9 +370,9 @@ async function apriChiudi($: EngineInterface) {
 
 let last = 0
 let fase = '' // what the model streams now: pensa or scrive (main chat)
-let car = 0 // characters streamed this turn, /4 is about tokens
+let car = 0 // real tokens of this turn, from the usage the model sends at the end of every step
 let inizioTurno = '' // start of the current turn, for the live view
-let fermaTic: (() => void) | undefined // stops the 1 s timer
+let fermaTic: { cancel: () => void } | undefined // stops the 1 s timer
 
 // At most one run every 15 s: a long transcript takes a couple of seconds to read.
 async function aggiorna($: EngineInterface, below: boolean, compact: boolean) {
@@ -409,7 +413,7 @@ export const register: Register = (on, options) => {
 
   on('turn.start', ($, e, next) => {
     if (e.agentId === undefined) {
-      fermaTic?.()
+      fermaTic?.cancel()
       fermaTic = $.clock.every(1000, () => { void update($, tic, n => n + 1).catch(() => undefined) })
     }
     if (e.agentId === undefined) { void update($, storia, () => []).catch(() => undefined); fase = ''; car = 0 }
@@ -427,13 +431,13 @@ export const register: Register = (on, options) => {
     }
     if (e.agentId !== undefined) return yield* next(e)
     for await (const c of next(e)) {
-      if (c.kind === 'thinking') { fase = 'pensa'; car += c.text.length } else if (c.kind === 'text') { fase = 'scrive'; car += c.text.length } else if (c.kind === 'tool') fase = ''
+      if (c.kind === 'thinking') fase = 'pensa'; else if (c.kind === 'text') fase = 'scrive'; else if (c.kind === 'tool') fase = ''; else if (c.kind === 'stop' && c.usage) car += c.usage.input_tokens + c.usage.output_tokens + c.usage.cache_creation_input_tokens
       yield c
     }
   })
 
   on('turn.complete', async ($, e, next) => {
-    if (e.agentId === undefined) { fermaTic?.(); fermaTic = undefined }
+    if (e.agentId === undefined) { fermaTic?.cancel(); fermaTic = undefined }
     void aggiorna($, below, compact)
     return next(e)
   }).catch(($, e, next) => next(e))
@@ -565,7 +569,7 @@ export const register: Register = (on, options) => {
     const ora0 = hist[0] ? spiega(hist[0]).cosa : ''
     const cosaFa = fase || ora0
     const vivo = lavoraOra
-      ? `in corso da ${dur(secT)}${cosaFa ? ' · ' + cosaFa : ''}${car > 0 ? ` · ~${kt(Math.round(car / 4))} token` : ''} · ${(p0?.model ?? d.chat).replace('claude-', '')} ${p0?.effort ?? ''} · ${d.lavorano} agenti al lavoro`.replace(/ {2,}/g, ' ')
+      ? `in corso da ${dur(secT)}${cosaFa ? ' · ' + cosaFa : ''}${car > 0 ? ` · ${kt(car)} token` : ''} · ${(p0?.model ?? d.chat).replace('claude-', '')} ${p0?.effort ?? ''} · ${d.lavorano} agenti al lavoro`.replace(/ {2,}/g, ' ')
       : 'pronto'
     const rigaVivo = desk ? scritta(vivo) : <Text dimColor>{vivo}</Text>
     const righeOra = hist.length === 0 ? null : (
@@ -637,7 +641,7 @@ export const register: Register = (on, options) => {
           {r5 ? (desk ? scritta(r5) : <Text dimColor>{r5}</Text>) : null}
           {desk && (d.stok || d.tok) ? (() => { const g = svgBarra(d.perliv ?? {}, d.stok || d.tok, tinta); return <Svg source={g.source} alt="chi ha usato i token" width={g.width} height={46} /> })() : null}
         </Box>
-        {desk ? (() => { const c = svgCruscotto(d.livello ?? livChat(d.chat), d.dir, tinta, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0); return <Box flexShrink={0}><Svg source={c.source} alt="cruscotto marcia" width={c.width} height={80} /></Box> })() : null}
+        {desk ? (() => { const c = svgCruscotto(d.livello ?? livChat(d.chat), d.dir, tinta, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, p0?.effort ?? ''); return <Box flexShrink={0}><Svg source={c.source} alt="cruscotto marcia" width={c.width} height={90} /></Box> })() : null}
         {desk ? (() => { const g = svgGriglia(d.perliv ?? {}, tinta, d.livello); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={84} /></Box> })() : null}
         </Box>
         {desk ? <Box flexDirection="row" justifyContent="flex-end"><Svg source={`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="16" viewBox="0 0 80 16">${STILE}<text x="80" y="12" class="sm mu" text-anchor="end">Gear ${VERSIONE}</text></svg>`} alt={`Gear ${VERSIONE}`} width={80} height={16} /></Box> : <Text dimColor>Gear {VERSIONE}</Text>}
