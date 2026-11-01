@@ -395,15 +395,15 @@ export const register: Register = (on, options) => {
           return <Box key={String(i)} overflow="hidden"><Svg source={g.source} alt={`${x.nome} ${x.stato} ${x.desc}`} width={g.width} height={24} /></Box>
         })}
         {d.interrotti > 0 && <Text size="footnote" dimColor>✗ {d.interrotti} interrotti (mai finiti, fermi da oltre 1h)</Text>}
+        <Box width={e.props.bodyColumns} flexDirection="column">
+          <Input key="comando" rows={1} label={desk ? '' : 'Comando'} placeholder="Comando per la sessione scelta, poi Invio ↵" value={cmd} submitLabel="↵" onInput={v => void update($, comando, () => v)} onSubmit={v => void azione($, 'invia', v)} />
+        </Box>
         <Box flexDirection="row" gap={2} flexWrap="wrap" alignItems="center">
           {lista.length > 0
             ? <Box flexDirection="row" gap={1} alignItems="center">{desk ? scritta('Sessione') : null}<Select key="sessione" label={desk ? '' : 'Sessione'} options={lista.map(x => ({ value: x.id, label: x.nome || x.id.slice(0, 8) }))} value={sel || lista[0].id} onSelect={v => void update($, scelta, () => v)} /></Box>
             : tasto('ricarica', 'Carica sessioni ↻', () => caricaSessioni($))}
           {tastino('ferma', 'Ferma', () => azione($, 'ferma'), c('max'))}
           {tastino('riprendi', 'Riprendi', () => azione($, 'riprendi'), c('medium'))}
-        </Box>
-        <Box width={e.props.bodyColumns} flexDirection="column">
-          <Input key="comando" rows={1} label={desk ? '' : 'Comando'} placeholder="Comando per la sessione scelta, poi Invio ↵" value={cmd} submitLabel="↵" onInput={v => void update($, comando, () => v)} onSubmit={v => void azione($, 'invia', v)} />
         </Box>
       </Box>,
     )
