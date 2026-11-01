@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.73'
+const VERSIONE = '0.6.74'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -261,7 +261,7 @@ function svgCruscotto(livello: string | null, dir: string, tinta: boolean, lavor
   out.push(`<text x="${cx}" y="${cy + 22}" text-anchor="middle" style="font-weight:600">${kt(vel)}</text><text x="${cx}" y="${cy + 32}" text-anchor="middle" class="sm mu">token/min</text>`)
   const nome = k >= 0 ? M[k].toUpperCase() : 'ferma'
   out.push(`<text x="${cx}" y="${cy + 46}" text-anchor="middle" class="sm"${k >= 0 && tinta ? ` style="fill:${COL[M[k]]}"` : ''}>${nome}${impegno ? ' · ' + impegno : ''}${dir === '▲' ? ' ↑' : dir === '▼' ? ' ↓' : ''}</text>`)
-  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="140" height="132" viewBox="0 0 140 132">${STILE}${out.join('')}</svg>`, width: 140 }
+  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="90" viewBox="0 0 140 132">${STILE}${out.join('')}</svg>`, width: 96 }
 }
 
 // Grid of the 4 gears: colour, name, agents used and their tokens in this session.
@@ -655,7 +655,7 @@ export const register: Register = (on, options) => {
           {r5 ? (desk ? scritta(r5) : <Text dimColor>{r5}</Text>) : null}
           {desk && (d.stok || d.tok) ? (() => { const g = svgBarra(d.perliv ?? {}, d.stok || d.tok, tinta); return <Svg source={g.source} alt="chi ha usato i token" width={g.width} height={46} /> })() : null}
         </Box>
-        {desk ? (() => { const sMin = lav0 ? (oraJ - inizio) / 60000 : 0; const c = svgCruscotto(d.livello ?? livChat(d.chat), d.dir, tinta, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, p0?.effort ?? '', sMin > 0.05 ? Math.round(car / sMin) : 0); return <Box flexShrink={0}><Svg source={c.source} alt="contachilometri: token al minuto" width={c.width} height={132} /></Box> })() : null}
+        {desk ? (() => { const sMin = lav0 ? (oraJ - inizio) / 60000 : 0; const c = svgCruscotto(d.livello ?? livChat(d.chat), d.dir, tinta, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, p0?.effort ?? '', sMin > 0.05 ? Math.round(car / sMin) : 0); return <Box flexShrink={0}><Svg source={c.source} alt="contachilometri: token al minuto" width={c.width} height={90} /></Box> })() : null}
         {desk ? (() => { const g = svgGriglia(d.perliv ?? {}, tinta, d.livello); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={84} /></Box> })() : null}
         </Box>
         {desk ? <Box flexDirection="row" justifyContent="flex-end"><Svg source={`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="16" viewBox="0 0 80 16">${STILE}<text x="80" y="12" class="sm mu" text-anchor="end">Gear ${VERSIONE}</text></svg>`} alt={`Gear ${VERSIONE}`} width={80} height={16} /></Box> : <Text dimColor>Gear {VERSIONE}</Text>}
