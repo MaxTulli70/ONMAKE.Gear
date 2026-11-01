@@ -3,7 +3,7 @@ export type Sessione = { id: string; nome: string }
 export type Passo = { model: string; effort: string }
 export type Dati = {
   chat: string
-  stok?: number; sag?: number; tokmod: [string, number][]
+  perliv?: Record<string, [number, number]>; stok?: number; sag?: number; tokmod: [string, number][]
   compito: string
   livello: string | null
   dir: string

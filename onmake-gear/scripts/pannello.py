@@ -206,7 +206,13 @@ def breve(r):
     tokmod = sorted(([k, v] for k, v in tm.items() if v > 0), key=lambda kv: -kv[1])
     passo = next((t.get("activeForm") or t.get("content") for t in (todos or []) if t.get("status") == "in_progress"), None)
     # solo un passo vero dell'elenco: l'ultimo messaggio "utente" puo' essere di un'altra sessione o un avviso
-    return dict(tokmod=tokmod, compito=(passo or "")[:60], chat=m["ora_mod"], livello=r["livello"], dir=r["dir"], agenti=len(ag), fini=sum(1 for x in ag if x["fine"]), lavorano=len(lav),
+    perliv = {k: [0, 0] for k in LIV[:4]}
+    for x in r["ag"]:
+        k = "opus" if x["liv"] == "max" else x["liv"]
+        if k in perliv:
+            perliv[k][0] += 1
+            perliv[k][1] += sum(x["v"][:3])
+    return dict(perliv=perliv, tokmod=tokmod, compito=(passo or "")[:60], chat=m["ora_mod"], livello=r["livello"], dir=r["dir"], agenti=len(ag), fini=sum(1 for x in ag if x["fine"]), lavorano=len(lav),
                 fermi=sum(1 for x in ag if x["stato"] == "fermo"), completi=sum(1 for x in ag if x["fine"]),
                 interrotti=sum(1 for x in ag if x["stato"] == "interrotto"),
                 attivi=[dict(liv=x["liv"], tipo=x["tipo"], nome=x["nome"], desc=x["desc"][:40], model=x["model"]) for x in lav],
