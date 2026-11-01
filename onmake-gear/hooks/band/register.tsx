@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.89'
+const VERSIONE = '0.6.90'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -118,6 +118,10 @@ const TR: Record<string, Record<string, string>> = {
     'totale chat': 'chat total',
     '↺ nuovo workflow': '↺ new workflow',
     'azzerare il workflow da adesso?': 'reset the workflow from now?',
+    'Chiudi ▴': 'Close ▴',
+    'Dettagli ▾': 'Details ▾',
+    'Pannello ↗': 'Panel ↗',
+    'interrotti (mai finiti, fermi da oltre 1h)': 'interrupted (never finished, idle for over 1h)',
     'OK': 'OK',
     'annulla': 'cancel',
     '? guida': '? guide',
@@ -193,6 +197,10 @@ const TR: Record<string, Record<string, string>> = {
     'totale chat': 'Chat gesamt',
     '↺ nuovo workflow': '↺ neuer Workflow',
     'azzerare il workflow da adesso?': 'Workflow ab jetzt zurücksetzen?',
+    'Chiudi ▴': 'Schließen ▴',
+    'Dettagli ▾': 'Details ▾',
+    'Pannello ↗': 'Panel ↗',
+    'interrotti (mai finiti, fermi da oltre 1h)': 'abgebrochen (nie beendet, über 1 Std. inaktiv)',
     'OK': 'OK',
     'annulla': 'abbrechen',
     '? guida': '? Hilfe',
@@ -268,6 +276,10 @@ const TR: Record<string, Record<string, string>> = {
     'totale chat': 'total chat',
     '↺ nuovo workflow': '↺ nouveau workflow',
     'azzerare il workflow da adesso?': 'réinitialiser le workflow dès maintenant ?',
+    'Chiudi ▴': 'Fermer ▴',
+    'Dettagli ▾': 'Détails ▾',
+    'Pannello ↗': 'Panneau ↗',
+    'interrotti (mai finiti, fermi da oltre 1h)': 'interrompus (jamais terminés, inactifs depuis plus d\'1 h)',
     'OK': 'OK',
     'annulla': 'annuler',
     '? guida': '? guide',
@@ -343,6 +355,10 @@ const TR: Record<string, Record<string, string>> = {
     'totale chat': 'total chat',
     '↺ nuovo workflow': '↺ nuevo workflow',
     'azzerare il workflow da adesso?': '¿reiniciar el workflow desde ahora?',
+    'Chiudi ▴': 'Cerrar ▴',
+    'Dettagli ▾': 'Detalles ▾',
+    'Pannello ↗': 'Panel ↗',
+    'interrotti (mai finiti, fermi da oltre 1h)': 'interrumpidos (nunca terminados, parados más de 1 h)',
     'OK': 'OK',
     'annulla': 'cancelar',
     '? guida': '? guía',
@@ -719,7 +735,7 @@ let inizioTurno = '' // start of the current turn, for the live view
 let veloce: { cancel: () => void } | undefined // 100 ms tick while a number counts
 let fermaTic: { cancel: () => void } | undefined // stops the 1 s timer
 
-// At most one run every 15 s: a long transcript takes a couple of seconds to read.
+// At most one run every 8 s: a long transcript takes a couple of seconds to read.
 async function aggiorna($: EngineInterface, below: boolean, compact: boolean) {
   const now = await $.clock.now()
   if (now - last < 8000) return
@@ -772,7 +788,7 @@ export const register: Register = (on, options) => {
       const v = { model: e.model, effort: e.effort === undefined ? '' : String(e.effort) }
       const was = await read($, passo).catch(() => null)
       if (!was || was.model !== v.model || was.effort !== v.effort) await update($, passo, () => v).catch(() => undefined)
-      // live view: refresh while the turn runs too (still at most every 15 s)
+      // live view: refresh while the turn runs too (still at most every 8 s)
       if ((await read($, vista).catch(() => 'tot')) === 'live') void aggiorna($, below, compact)
     }
     if (e.agentId !== undefined) return yield* next(e)
@@ -797,7 +813,7 @@ export const register: Register = (on, options) => {
       $.clock.after(1200, () => { veloce?.cancel(); veloce = undefined })
     }
     contando = false
-    void aggiorna($, below, compact).catch(() => undefined) // numbers stayed old when turn.complete did not reach the mod; at most every 15 s
+    void aggiorna($, below, compact).catch(() => undefined) // numbers stayed old when turn.complete did not reach the mod; at most every 8 s
     await read($, tic).catch(() => 0) // reading it redraws the band at every tick
     const sotto = await next(e).catch(() => undefined)
     const d = await read($, dati)
@@ -885,10 +901,10 @@ export const register: Register = (on, options) => {
         </Box>
         <Box flexShrink={0} flexDirection="row" gap={2}>
           <Button key="tendina" plain onPress={() => apriChiudi($)}>
-            <Text dimColor>{open ? 'Chiudi ▴' : 'Dettagli ▾'}</Text>
+            <Text dimColor>{open ? tr('Chiudi ▴') : tr('Dettagli ▾')}</Text>
           </Button>
           <Button key="pannello" plain onPress={() => apriPannello($).catch(() => $.ui.toast(tr('Gear: pannello non aperto')))}>
-            <Text dimColor>Pannello ↗</Text>
+            <Text dimColor>{tr('Pannello ↗')}</Text>
           </Button>
         </Box>
       </Box>
@@ -995,7 +1011,7 @@ export const register: Register = (on, options) => {
           const g = svgAgente(x, tinta)
           return <Box key={String(i)} overflow="hidden"><Svg source={g.source} alt={`${x.nome} ${x.stato} ${x.desc}`} width={g.width} height={24} /></Box>
         })}
-        {d.interrotti > 0 && <Text size="footnote" dimColor>✗ {d.interrotti} interrotti (mai finiti, fermi da oltre 1h)</Text>}
+        {d.interrotti > 0 && <Text size="footnote" dimColor>✗ {d.interrotti} {tr('interrotti (mai finiti, fermi da oltre 1h)')}</Text>}
         <Box width={e.props.bodyColumns} flexDirection="row" justifyContent="flex-start" alignItems="flex-start" gap={4}>
         <Box flexDirection="column" flexShrink={1} gap={0}>
           {desk ? scritta(r1) : <Text dimColor>{r1}</Text>}
