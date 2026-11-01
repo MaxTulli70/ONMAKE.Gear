@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.82'
+const VERSIONE = '0.6.83'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -404,11 +404,11 @@ function spiega(ora: Attivo) {
 
 // Short guide shown by the '? guida' button.
 const GUIDA: Record<string, string[]> = {
-  it: ['marce: LIGHT Haiku, MEDIUM e HIGH Sonnet, OPUS Opus, MAX picco', '↑ salita, ↓ scesa: marcia rispetto all\'agente prima', 'barretta: impegno low, medium, high, max', 'live: turno in corso · workflow: dal reset · totale: chat', 'contachilometri: token al minuto del turno', 'indice 0 tutto Opus, 100 tutto Haiku (verde ≥50)', 'risparmio: token fatti da modelli sotto Opus'],
-  en: ['gears: LIGHT Haiku, MEDIUM and HIGH Sonnet, OPUS Opus, MAX peak', '↑ up, ↓ down: gear compared with the previous agent', 'small bar: effort low, medium, high, max', 'live: current turn · workflow: since reset · total: chat', 'speedometer: tokens per minute of the turn', 'index 0 all Opus, 100 all Haiku (green ≥50)', 'saving: tokens done by models below Opus'],
-  de: ['Gänge: LIGHT Haiku, MEDIUM und HIGH Sonnet, OPUS Opus, MAX Spitze', '↑ hoch, ↓ runter: Gang im Vergleich zum vorigen Agenten', 'Balken: Aufwand low, medium, high, max', 'live: aktueller Durchgang · Workflow: seit Reset · gesamt: Chat', 'Tacho: Token pro Minute des Durchgangs', 'Index 0 alles Opus, 100 alles Haiku (grün ≥50)', 'Ersparnis: Token von Modellen unter Opus'],
-  fr: ['vitesses : LIGHT Haiku, MEDIUM et HIGH Sonnet, OPUS Opus, MAX pic', '↑ montée, ↓ descente : vitesse par rapport à l\'agent précédent', 'barrette : effort low, medium, high, max', 'live : tour en cours · workflow : depuis le reset · total : chat', 'compteur : tokens par minute du tour', 'indice 0 tout Opus, 100 tout Haiku (vert ≥50)', 'économie : tokens faits par des modèles sous Opus'],
-  es: ['marchas: LIGHT Haiku, MEDIUM y HIGH Sonnet, OPUS Opus, MAX pico', '↑ sube, ↓ baja: marcha respecto al agente anterior', 'barrita: esfuerzo low, medium, high, max', 'live: turno en curso · workflow: desde el reset · total: chat', 'velocímetro: tokens por minuto del turno', 'índice 0 todo Opus, 100 todo Haiku (verde ≥50)', 'ahorro: tokens hechos por modelos bajo Opus'],
+  it: ['marce: LIGHT Haiku, MEDIUM e HIGH Sonnet, OPUS Opus, MAX picco', '↑ salita, ↓ scesa: marcia rispetto all\'agente prima', 'barretta: impegno low, medium, high, max', 'live: turno in corso · workflow: dal reset · totale: chat', 'contachilometri: marcia e impegno (L M H O X, 4 passi ciascuna)', 'indice 0 tutto Opus, 100 tutto Haiku (verde ≥50)', 'risparmio: token fatti da modelli sotto Opus'],
+  en: ['gears: LIGHT Haiku, MEDIUM and HIGH Sonnet, OPUS Opus, MAX peak', '↑ up, ↓ down: gear compared with the previous agent', 'small bar: effort low, medium, high, max', 'live: current turn · workflow: since reset · total: chat', 'speedometer: gear and effort (L M H O X, 4 steps each)', 'index 0 all Opus, 100 all Haiku (green ≥50)', 'saving: tokens done by models below Opus'],
+  de: ['Gänge: LIGHT Haiku, MEDIUM und HIGH Sonnet, OPUS Opus, MAX Spitze', '↑ hoch, ↓ runter: Gang im Vergleich zum vorigen Agenten', 'Balken: Aufwand low, medium, high, max', 'live: aktueller Durchgang · Workflow: seit Reset · gesamt: Chat', 'Tacho: Gang und Aufwand (L M H O X, je 4 Stufen)', 'Index 0 alles Opus, 100 alles Haiku (grün ≥50)', 'Ersparnis: Token von Modellen unter Opus'],
+  fr: ['vitesses : LIGHT Haiku, MEDIUM et HIGH Sonnet, OPUS Opus, MAX pic', '↑ montée, ↓ descente : vitesse par rapport à l\'agent précédent', 'barrette : effort low, medium, high, max', 'live : tour en cours · workflow : depuis le reset · total : chat', 'compteur : vitesse et effort (L M H O X, 4 crans chacune)', 'indice 0 tout Opus, 100 tout Haiku (vert ≥50)', 'économie : tokens faits par des modèles sous Opus'],
+  es: ['marchas: LIGHT Haiku, MEDIUM y HIGH Sonnet, OPUS Opus, MAX pico', '↑ sube, ↓ baja: marcha respecto al agente anterior', 'barrita: esfuerzo low, medium, high, max', 'live: turno en curso · workflow: desde el reset · total: chat', 'velocímetro: marcha y esfuerzo (L M H O X, 4 pasos cada una)', 'índice 0 todo Opus, 100 todo Haiku (verde ≥50)', 'ahorro: tokens hechos por modelos bajo Opus'],
 }
 
 function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lavora = false, ora: Attivo | null = null, adesso = 0, vivoTok = 0) {
@@ -552,7 +552,7 @@ const livChat = (m: string) => (/haiku/.test(m) ? 'light' : /sonnet/.test(m) ? '
 // Car speedometer: 240° dial, scale 0..10 thousand token/min with ticks and numbers, gear zones on the rim,
 // needle on the real speed of this turn (tokens per minute), digital readout and gear + effort under the hub.
 function svgCruscotto(livello: string | null, dir: string, tinta: boolean, lavora: boolean, impegno = '', vel = 0) {
-  const M = ['light', 'medium', 'high', 'opus', 'max'], cx = 70, cy = 66, R = 56, MAXV = 10000
+  const M = ['light', 'medium', 'high', 'opus', 'max'], cx = 70, cy = 66, R = 56, MAXV = 0
   const ang = (f: number) => (210 - 240 * f) * Math.PI / 180
   const pt = (a: number, r: number) => [(cx + r * Math.cos(a)).toFixed(1), (cy - r * Math.sin(a)).toFixed(1)]
   const k = livello ? M.indexOf(livello) : -1
@@ -566,16 +566,19 @@ function svgCruscotto(livello: string | null, dir: string, tinta: boolean, lavor
     const big = j % 4 === 0, a = ang(j / 20)
     const [x0, y0] = pt(a, R - 4), [x1, y1] = pt(a, R - (big ? 12 : 8))
     out.push(`<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" style="stroke:#55554f;stroke-width:${big ? 1.6 : 0.8}"/>`)
-    if (big) { const [tx, ty] = pt(a, R - 20); out.push(`<text x="${tx}" y="${(+ty + 3).toFixed(1)}" text-anchor="middle" class="sm mu">${j / 2}</text>`) }
+    // letter of each gear in the middle of its sector: 4 effort steps per gear, 20 in all
+    if (j % 4 === 2) { const [tx, ty] = pt(a, R - 20); out.push(`<text x="${tx}" y="${(+ty + 3).toFixed(1)}" text-anchor="middle" class="sm"${tinta ? ` style="fill:${COL[M[(j - 2) / 4]]}"` : ''}>${'LMHOX'[(j - 2) / 4]}</text>`) }
   }
-  const f = Math.max(0, Math.min(1, vel / MAXV)), a = ang(f)
+  // needle = gear and effort together: each gear has 4 steps (low, medium, high, max)
+  const ei = Math.max(0, ['low', 'medium', 'high', 'max'].indexOf(impegno))
+  const f = k >= 0 ? (k * 4 + ei + 0.5) / 20 : 0, a = ang(f)
   const [nx, ny] = pt(a, R - 10), [bx, by] = pt(a + Math.PI, 8)
   const vib = lavora ? `<animateTransform attributeName="transform" type="rotate" values="-1.5 ${cx} ${cy};1.5 ${cx} ${cy};-1.5 ${cx} ${cy}" dur="0.4s" repeatCount="indefinite"/>` : ''
   out.push(`<line x1="${bx}" y1="${by}" x2="${nx}" y2="${ny}" style="stroke:#c0392b;stroke-width:2.2;stroke-linecap:round">${vib}</line>`)
   out.push(`<circle cx="${cx}" cy="${cy}" r="5" style="fill:#3a3a36"/>`)
-  out.push(`<text x="${cx}" y="${cy + 22}" text-anchor="middle" style="font-weight:600">${kt(vel)}</text><text x="${cx}" y="${cy + 32}" text-anchor="middle" class="sm mu">${tr('token/min')}</text>`)
   const nome = k >= 0 ? M[k].toUpperCase() : tr('ferma')
-  out.push(`<text x="${cx}" y="${cy + 46}" text-anchor="middle" class="sm"${k >= 0 && tinta ? ` style="fill:${COL[M[k]]}"` : ''}>${nome}${impegno ? ' · ' + impegno : ''}${dir === '▲' ? ' ↑' : dir === '▼' ? ' ↓' : ''}</text>`)
+  out.push(`<text x="${cx}" y="${cy + 24}" text-anchor="middle" style="font-weight:600${k >= 0 && tinta ? `;fill:${COL[M[k]]}` : ''}">${nome}${dir === '▲' ? ' ↑' : dir === '▼' ? ' ↓' : ''}</text>`)
+  if (impegno) out.push(`<text x="${cx}" y="${cy + 38}" text-anchor="middle" class="sm mu">${impegno}</text>`)
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="90" viewBox="0 0 140 132">${STILE}${out.join('')}</svg>`, width: 96 }
 }
 
@@ -973,7 +976,7 @@ export const register: Register = (on, options) => {
           {r5 ? (desk ? scritta(r5) : <Text dimColor>{r5}</Text>) : null}
           {desk && (d.stok || d.tok) ? (() => { const g = svgBarra(d.perliv ?? {}, d.stok || d.tok, tinta); return <Svg source={g.source} alt="chi ha usato i token" width={g.width} height={46} /> })() : null}
         </Box>
-        {desk ? (() => { const sMin = lav0 ? (oraJ - inizio) / 60000 : 0; const c = svgCruscotto(d.livello ?? livChat(d.chat), d.dir, tinta, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, p0?.effort ?? '', sMin > 0.05 ? Math.round(car / sMin) : 0); return <Box flexShrink={0}><Svg source={c.source} alt="contachilometri: token al minuto" width={c.width} height={90} /></Box> })() : null}
+        {desk ? (() => { const sMin = lav0 ? (oraJ - inizio) / 60000 : 0; const c = svgCruscotto(d.livello ?? livChat(d.chat), d.dir, tinta, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, p0?.effort ?? '', sMin > 0.05 ? Math.round(car / sMin) : 0); return <Box flexShrink={0}><Svg source={c.source} alt="contachilometri: marcia e impegno" width={c.width} height={90} /></Box> })() : null}
         {desk ? (() => { const g = svgGriglia(d.perliv ?? {}, tinta, d.livello); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={84} /></Box> })() : null}
         </Box>
         {apriG ? <Box flexDirection="column"><Box flexDirection="row" gap={2}>{Object.keys(GUIDA).map(k => piccolo('lg' + k, k.toUpperCase(), () => update($, lingua, () => k), k === lg ? '#3a3a36' : undefined))}</Box>{(GUIDA[lg] ?? GUIDA.it).map((x, i) => <Box key={'g' + i}>{desk ? scritta(x) : <Text dimColor>{x}</Text>}</Box>)}</Box> : null}
