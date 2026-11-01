@@ -33,7 +33,7 @@ test('desktop: the bar is an Svg with the level and the share', async ($, on) =>
   const svg = await ui.find({ type: 'Svg' })
   expect((svg?.props as { source?: string })?.source).toContain('MEDIUM')
   expect((svg?.props as { source?: string })?.source).toContain('40%')
-  expect(await ui.find({ key: 'onmake' })).toBeTruthy()
+  expect(JSON.stringify(ui.tree ?? (await ui.find({ type: 'Box' })))).toContain('https://www.onmake.it')
   expect(await ui.find({ key: 'tendina' })).toBeTruthy()
   expect(await ui.find({ key: 'pannello' })).toBeTruthy()
   expect(await ui.find({ type: 'Text', text: /job/ })).toBeTruthy()

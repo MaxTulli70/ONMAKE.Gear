@@ -86,7 +86,8 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean) {
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${H}" viewBox="0 0 ${w} ${H}">${STILE}${out.join('')}</svg>`, width: w }
 }
 
-// ONMAKE: a press on the hexagon mark opens the site.
+// ONMAKE logo (assets/onmake-logo.svg) with its link to the site inside the SVG.
+const LOGO = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="22" height="24" viewBox="0 -5 100 114"><a href="https://www.onmake.it" xlink:href="https://www.onmake.it" target="_blank" rel="noopener"><title>onmake.it</title><defs> <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"> <stop offset="0" stop-color="#8fbc7c"/><stop offset="0.45" stop-color="#6aa057"/><stop offset="1" stop-color="#5f9a4e"/> </linearGradient> <linearGradient id="f" x1="0" y1="0" x2="1" y2="1"> <stop offset="0" stop-color="#4a4a48"/><stop offset="1" stop-color="#2f2f2e"/> </linearGradient> </defs> <path d="M50 3 L92.4 27.5 Q94 28.4 94 30.3 L94 73.7 Q94 75.6 92.4 76.5 L50 101 L7.6 76.5 Q6 75.6 6 73.7 L6 30.3 Q6 28.4 7.6 27.5 Z" fill="url(#f)"/> <path d="M50 12.5 L85.5 33 L85.5 71 L50 91.5 L14.5 71 L14.5 33 Z" fill="url(#g)" stroke="#6b6b69" stroke-width="0.8"/> <path d="M14.5 33 L50 12.5 L85.5 33 L85.5 40 Q50 32 14.5 66 Z" fill="#ffffff" opacity="0.12"/> <text x="50" y="58" text-anchor="middle" font-family="Futura, 'Avenir Next', 'Century Gothic', system-ui, sans-serif" font-weight="600" font-size="15.5" textLength="66" lengthAdjust="spacingAndGlyphs" fill="#363634">ONMAKE</text></a></svg>`
 const SITO = 'https://www.onmake.it'
 
 async function apriSito($: EngineInterface) {
@@ -221,7 +222,7 @@ export const register: Register = (on, options) => {
     }
 
     const desk = e.surface === 'desktop'
-    const { Svg } = $.ui.resolve(e) as unknown as { Svg: (p: { source: string; alt: string; width?: number; height?: number }) => JSX.Element }
+    const { Svg } = $.ui.resolve(e) as unknown as { Svg: (p: { source: string; alt: string; width?: number; height?: number; isInteractive?: boolean }) => JSX.Element }
     const tasto = (k: string, s: string, fn: () => unknown, col?: string) => {
       // A Button holds only strings and Text (an Svg inside is refused), so its label is Text on every surface.
       return <Button key={k} plain onPress={fn}><Text color={col} dimColor={!col}>{s}</Text></Button>
@@ -233,10 +234,8 @@ export const register: Register = (on, options) => {
           <Svg source={riga1.source} alt={riga(d, compact)} width={riga1.width} height={24} />
         </Box>
         <Box flexShrink={0} flexDirection="row" gap={0} alignItems="center">
-          {/* The app takes only text inside a button, so the pressable ONMAKE mark is the hexagon glyph in the logo green. */}
-          <Button key="onmake" plain onPress={() => apriSito($).catch(() => $.ui.toast('Gear: sito non aperto'))}>
-            <Text color="#6aa057" bold>⬢</Text>
-          </Button>
+          {/* A button takes only text, so the logo is an interactive SVG whose own link opens the site. */}
+          <Svg source={LOGO} alt="ONMAKE, apre onmake.it" width={22} height={24} isInteractive />
           {tasto('tendina', open ? 'Chiudi ▴' : 'Dettagli ▾', () => apriChiudi($))}
           {tasto('pannello', 'Pannello ↗', () => apriPannello($).catch(() => $.ui.toast('Gear: pannello non aperto')))}
         </Box>
