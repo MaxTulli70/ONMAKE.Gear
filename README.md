@@ -37,6 +37,10 @@ Italiano: see [README.it.md](README.it.md).
 
 Buttons: the ONMAKE logo opens onmake.it; the arrow opens the dropdown; ↗ opens the HTML panel in the browser.
 
+![Gear bar](docs/gear-barra.png)
+
+![Gear panel](docs/gear-pannello.png)
+
 The dropdown has three views: live (from the start of the current turn), workflow (from the saved reset) and total chat (the whole chat). It holds the speedometer, a dial with zones L M H O X and a needle that follows gear and effort (4 effort steps per gear).
 
 The optimization index goes from 0 to 100. Weights: agents light 1, medium 2, high 3, opus 5; chat Haiku 1, Sonnet 2, other 5. Green from 50, yellow from 20. Savings shows the tokens done by light, medium and high agents with their percent of the total.

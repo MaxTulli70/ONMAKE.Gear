@@ -43,6 +43,10 @@ Versione 0.6.89, in prova.
 
 Pulsanti: il logo ONMAKE apre onmake.it; la freccia apre il menu a tendina; ↗ apre il pannello HTML nel browser.
 
+![Barra di Gear](docs/gear-barra.png)
+
+![Pannello di Gear](docs/gear-pannello.png)
+
 Il menu a tendina ha tre viste: live (dall'inizio del turno attuale), workflow (dal reset salvato) e chat totale (tutta la chat). Contiene il contachilometri, un quadrante con le zone L M H O X e una lancetta che segue marcia ed effort (4 passi di effort per marcia).
 
 L'indice di ottimizzazione va da 0 a 100. Pesi: agenti light 1, medium 2, high 3, opus 5; chat Haiku 1, Sonnet 2, altro 5. Verde da 50, giallo da 20. Il risparmio mostra i token fatti dagli agenti light, medium e high con la percentuale sul totale.
