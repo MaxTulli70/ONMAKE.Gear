@@ -109,10 +109,15 @@ def leggi(path):
     att = sum(g for g in ((y - x).total_seconds() for x, y in zip(ts, ts[1:])) if g <= 300)
     # lavoro attuale: dal tuo ultimo messaggio
     vt = [sum(x[1][k] for i, x in msgs.items() if ultimo and quando.get(i) and quando[i] >= ultimo) for k in range(4)]
+    pmt = {}  # token del lavoro attuale per modello
+    for i, (mod, x) in msgs.items():
+        if ultimo and quando.get(i) and quando[i] >= ultimo:
+            k = (mod or "?").replace("claude-", "")
+            pmt[k] = pmt.get(k, 0) + sum(x[:3])
     tt = [x for x in ts if ultimo and x >= ultimo]
     att_t = sum(g for g in ((y - x).total_seconds() for x, y in zip(tt, tt[1:])) if g <= 300)
     return dict(model=model, pm=pm, v=v, a=ts[0] if ts else None, b=ts[-1] if ts else None, tools=tools, todos=todos, att=att,
-                ultimo=ultimo, vt=vt, att_t=att_t, todo_t=todo_t, ultimo_txt=ultimo_txt, ora_mod=(ora_mod or "").replace("claude-", ""))
+                ultimo=ultimo, vt=vt, pmt=pmt, att_t=att_t, todo_t=todo_t, ultimo_txt=ultimo_txt, ora_mod=(ora_mod or "").replace("claude-", ""))
 
 def sessione(cartella, sid):
     d = os.path.expanduser("~/.claude/projects/" + re.sub(r"[^A-Za-z0-9]", "-", cartella))
@@ -195,9 +200,13 @@ def breve(r):
     tok = sum(m["vt"][:3]) + sum(sum(x["v"][:3]) for x in ag)
     lav = [x for x in ag if x["stato"] == "lavora"]
     vis = [x for x in ag if x["stato"] in ("lavora", "fermo")] + [x for x in ag if x["stato"] == "completato"][-5:]
+    tm = dict(m["pmt"])
+    for x in ag:
+        tm[x["model"]] = tm.get(x["model"], 0) + sum(x["v"][:3])
+    tokmod = sorted(([k, v] for k, v in tm.items() if v > 0), key=lambda kv: -kv[1])
     passo = next((t.get("activeForm") or t.get("content") for t in (todos or []) if t.get("status") == "in_progress"), None)
     # solo un passo vero dell'elenco: l'ultimo messaggio "utente" puo' essere di un'altra sessione o un avviso
-    return dict(compito=(passo or "")[:60], chat=m["ora_mod"], livello=r["livello"], dir=r["dir"], agenti=len(ag), fini=sum(1 for x in ag if x["fine"]), lavorano=len(lav),
+    return dict(tokmod=tokmod, compito=(passo or "")[:60], chat=m["ora_mod"], livello=r["livello"], dir=r["dir"], agenti=len(ag), fini=sum(1 for x in ag if x["fine"]), lavorano=len(lav),
                 fermi=sum(1 for x in ag if x["stato"] == "fermo"), completi=sum(1 for x in ag if x["fine"]),
                 interrotti=sum(1 for x in ag if x["stato"] == "interrotto"),
                 attivi=[dict(liv=x["liv"], tipo=x["tipo"], nome=x["nome"], desc=x["desc"][:40], model=x["model"]) for x in lav],

@@ -1,16 +1,20 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { Dati, Sessione } from '../../types'
+import type { Dati, Passo, Sessione } from '../../types'
 
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
+// Model and effort of the main chat's last model request, as the engine sends it.
+const passo = atom({ plugin: 'onmake-gear', key: 'passo' } as const, null as Passo | null)
 const aperta = atom({ plugin: 'onmake-gear', key: 'aperta' } as const, false)
 const sessioni = atom({ plugin: 'onmake-gear', key: 'sessioni' } as const, [] as Sessione[])
 const scelta = atom({ plugin: 'onmake-gear', key: 'scelta' } as const, '')
 const comando = atom({ plugin: 'onmake-gear', key: 'comando' } as const, '')
 
+// 'claude-opus-5-5' or 'opus-5-5' -> 'Opus 5.5'
+const nomeModello = (m: string) => { const [f, ...v] = m.replace(/^claude-/, '').split('-'); return f ? `${f.charAt(0).toUpperCase()}${f.slice(1)} ${v.join('.')}`.trim() : m }
 const kt = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}K` : `${n}`)
 const dur = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}h${Math.floor((s % 3600) / 60)}m` : s >= 60 ? `${Math.floor(s / 60)}m` : `${s}s`)
 
@@ -46,9 +50,9 @@ function riga(d: Dati, compact: boolean) {
 const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 // Width per character at 13 px: capitals and digits are wider than lower case, spaces narrower.
 const largo = (t: string) => Math.ceil([...t].reduce((w, ch) => w + (ch === ' ' ? 3.8 : /[A-Z0-9%]/.test(ch) ? 8.8 : /[▶⏸✓✗↓↑]/.test(ch) ? 11 : 7.2), 0))
-const STILE = '<style>text{font:400 13px -apple-system,system-ui,sans-serif;fill:#55554f}.mu{fill:#8a8a84}.v{fill:#d6d6cf}@media(prefers-color-scheme:dark){text{fill:#c9c9d1}.mu{fill:#8d8d97}.v{fill:#3a3a42}}</style>'
+const STILE = '<style>text{font:400 13px -apple-system,system-ui,sans-serif;fill:#55554f}.sm{font-size:11px;letter-spacing:.3px}.mu{fill:#8a8a84}.v{fill:#d6d6cf}@media(prefers-color-scheme:dark){text{fill:#c9c9d1}.mu{fill:#8d8d97}.v{fill:#3a3a42}}</style>'
 
-function svgRiga(d: Dati, tinta: boolean, compact: boolean) {
+function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null) {
   const out: string[] = []
   let x = 0
   const H = 24, Y = 16.5
@@ -67,17 +71,24 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean) {
   const MARCE = ['light', 'medium', 'high', 'opus', 'max']
   const k = d.livello ? MARCE.indexOf(d.livello) : -1
   MARCE.forEach((m, i) => {
-    const h = 5 + i * 3.5
-    out.push(`<rect x="${i * 7}" y="${20 - h}" width="5" height="${h}" rx="1.2"${i <= k ? ` style="fill:${tinta ? COL[m] : '#55554f'}"` : ' class="v"'}/>`)
+    const h = 4 + i * 2.6
+    out.push(`<rect x="${i * 5.5}" y="${18 - h}" width="4" height="${h}" rx="1"${i <= k ? ` style="fill:${tinta ? COL[m] : '#55554f'}"` : ' class="v"'}/>`)
   })
-  x = 5 * 7 + 6
+  x = 5 * 5.5 + 6
   if (k >= 0) {
-    t(d.livello!.toUpperCase(), '', tinta ? COL[d.livello!] : undefined); sp(4)
+    // The gear name a little smaller than the rest (11 px).
+    const nome = d.livello!.toUpperCase()
+    out.push(`<text x="${x}" y="${Y}" class="sm"${tinta ? ` style="fill:${COL[d.livello!]}"` : ''}>${esc(nome)}</text>`)
+    x += Math.ceil(largo(nome) * 0.85); sp(4)
     t(`${k + 1}/5${d.dir === '▲' ? ' ▲' : d.dir === '▼' ? ' ▼' : ''}`, 'mu')
   } else t('nessuna marcia', 'mu')
   // The model the chat is using now, e.g. 'opus-5-5' -> 'Opus 5.5'.
-  if (d.chat) { const [f, ...v] = d.chat.split('-'); sp(8); t(`${f.charAt(0).toUpperCase()}${f.slice(1)} ${v.join('.')}`, 'mu') }
-  sep(); t(`${kt(d.tok)} tok`, 'mu')
+  // Model and effort the chat is using now, then the tokens of the current job per model.
+  const mod = p?.model || d.chat
+  if (mod) { sep(); t('chat', 'mu'); sp(5); t(nomeModello(mod)); if (p?.effort) { sp(5); t(`effort ${p.effort}`, 'mu') } }
+  sep()
+  if (d.tokmod && d.tokmod.length > 0) d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); t(nomeModello(m).split(' ')[0], 'mu'); sp(4); t(kt(n)) })
+  else t(`${kt(d.tok)} tok`, 'mu')
   if (!compact) {
     // Only what is useful now: the current job (since your last message); counts at zero and a missing task list are left out.
     const n: [number, string, string | undefined][] = [[d.lavorano, '▶', COL.medium], [d.fermi, '⏸', COL.high], [d.completi, '✓', undefined], [d.interrotti, '✗', undefined]]
@@ -207,6 +218,16 @@ export const register: Register = (on, options) => {
     return { text: ok ? 'Gear panel opened in the browser.' : 'Gear panel: could not build the page.' }
   })
 
+  // turn.step streams, so the hook is a generator that passes every chunk through untouched.
+  on('turn.step', async function* ($, e, next) {
+    if (e.agentId === undefined) {
+      const v = { model: e.model, effort: e.effort === undefined ? '' : String(e.effort) }
+      const was = await read($, passo).catch(() => null)
+      if (!was || was.model !== v.model || was.effort !== v.effort) await update($, passo, () => v).catch(() => undefined)
+    }
+    return yield* next(e)
+  })
+
   on('turn.complete', async ($, e, next) => {
     void aggiorna($, below, compact)
     return next(e)
@@ -240,7 +261,7 @@ export const register: Register = (on, options) => {
       // A Button holds only strings and Text (an Svg inside is refused), so its label is Text on every surface.
       return <Button key={k} plain onPress={fn}><Text color={col} dimColor={!col}>{s}</Text></Button>
     }
-    const riga1 = svgRiga(d, tinta, compact)
+    const riga1 = svgRiga(d, tinta, compact, await read($, passo))
     const testaDesk = (
       <Box flexDirection="row" alignItems="center" gap={1} width={e.props.bodyColumns}>
         <Box flexGrow={1} flexShrink={1} overflow="hidden">
