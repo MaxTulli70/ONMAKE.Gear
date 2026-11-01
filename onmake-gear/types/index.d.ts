@@ -30,6 +30,6 @@ export type Dati = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'onmake-gear': { passo: Passo | null; dati: Dati | null; aperta: boolean; sessioni: Sessione[]; scelta: string; comando: string; vista: string; reset: string; attivo: Attivo | null }
+    'onmake-gear': { passo: Passo | null; dati: Dati | null; aperta: boolean; sessioni: Sessione[]; scelta: string; comando: string; vista: string; reset: string; attivo: Attivo | null; tic: number }
   }
 }

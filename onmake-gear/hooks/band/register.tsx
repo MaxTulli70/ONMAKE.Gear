@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.65'
+const VERSIONE = '0.6.66'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -19,6 +19,7 @@ const vista = atom({ plugin: 'onmake-gear', key: 'vista' } as const, 'tot')
 const reset = atom({ plugin: 'onmake-gear', key: 'reset' } as const, '')
 const attivo = atom({ plugin: 'onmake-gear', key: 'attivo' } as const, null as Attivo | null)
 const comando = atom({ plugin: 'onmake-gear', key: 'comando' } as const, '')
+const tic = atom({ plugin: 'onmake-gear', key: 'tic' } as const, 0) // once a second while working: makes the band redraw
 
 // 'claude-opus-5-5' or 'opus-5-5' -> 'Opus 5.5'
 const nomeModello = (m: string) => { const [f, ...v] = m.replace(/^claude-/, '').split('-'); return f ? `${f.charAt(0).toUpperCase()}${f.slice(1)} ${v.join('.')}`.trim() : m }
@@ -131,7 +132,11 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
     const sp2 = spiega(ora); t(sp2.cosa, '', tinta ? '#3a3a36' : undefined); if (sp2.dove) { sp(5); t(sp2.dove.slice(0, 30), 'mu') }
     const sec = adesso && ora.t0 ? Math.max(0, Math.round((adesso - ora.t0) / 1000)) : 0
     if (sec) { sp(5); t(dur(sec), 'mu') }
-  } else t(lavora ? 'pensa…' : 'pronto', 'mu')
+  } else if (lavora) {
+    t('pensa…', 'mu')
+    const s0 = adesso && inizioTurno ? Math.max(0, Math.round((adesso - Date.parse(inizioTurno)) / 1000)) : 0
+    if (s0) { sp(5); t(dur(s0), 'mu') }
+  } else t('pronto', 'mu')
   // The model the chat is using now, e.g. 'opus-5-5' -> 'Opus 5.5'.
   // Model and effort the chat is using now, then the tokens of the current job per model.
   const mod = p?.model || d.chat
@@ -359,6 +364,7 @@ async function apriChiudi($: EngineInterface) {
 
 let last = 0
 let inizioTurno = '' // start of the current turn, for the live view
+let fermaTic: (() => void) | undefined // stops the 1 s timer
 
 // At most one run every 15 s: a long transcript takes a couple of seconds to read.
 async function aggiorna($: EngineInterface, below: boolean, compact: boolean) {
@@ -396,6 +402,10 @@ export const register: Register = (on, options) => {
   }).catch(($, e, next) => next(e))
 
   on('turn.start', ($, e, next) => {
+    if (e.agentId === undefined) {
+      fermaTic?.()
+      fermaTic = $.clock.every(1000, () => { void update($, tic, n => n + 1).catch(() => undefined) })
+    }
     if (e.agentId === undefined) { turnoId = e.turnId; void $.clock.now().then(t => { inizioTurno = new Date(t).toISOString() }) }
     return next(e)
   })
@@ -412,12 +422,14 @@ export const register: Register = (on, options) => {
   })
 
   on('turn.complete', async ($, e, next) => {
+    if (e.agentId === undefined) { fermaTic?.(); fermaTic = undefined }
     void aggiorna($, below, compact)
     return next(e)
   }).catch(($, e, next) => next(e))
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     void aggiorna($, below, compact).catch(() => undefined) // numbers stayed old when turn.complete did not reach the mod; at most every 15 s
+    await read($, tic).catch(() => 0) // reading it redraws the band at every tick
     const sotto = await next(e).catch(() => undefined)
     const d = await read($, dati)
     if (below || e.props.hasSurvey || d === null) return sotto ?? next(e)
