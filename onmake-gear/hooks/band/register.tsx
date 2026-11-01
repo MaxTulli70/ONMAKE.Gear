@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.74'
+const VERSIONE = '0.6.75'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -234,34 +234,29 @@ function svgBarra(pl: Record<string, [number, number]>, tot: number, tinta: bool
 
 // Dashboard gauge: half dial with the 5 gears as coloured sectors, needle on the active one, arrow up/down.
 const livChat = (m: string) => (/haiku/.test(m) ? 'light' : /sonnet/.test(m) ? 'medium' : /opus/.test(m) ? 'opus' : null)
-// Car speedometer: 240° dial, scale 0..10 thousand token/min with ticks and numbers, gear zones on the rim,
-// needle on the real speed of this turn (tokens per minute), digital readout and gear + effort under the hub.
-function svgCruscotto(livello: string | null, dir: string, tinta: boolean, lavora: boolean, impegno = '', vel = 0) {
-  const M = ['light', 'medium', 'high', 'opus', 'max'], cx = 70, cy = 66, R = 56, MAXV = 10000
-  const ang = (f: number) => (210 - 240 * f) * Math.PI / 180
-  const pt = (a: number, r: number) => [(cx + r * Math.cos(a)).toFixed(1), (cy - r * Math.sin(a)).toFixed(1)]
+function svgCruscotto(livello: string | null, dir: string, tinta: boolean, lavora: boolean, impegno = '') {
+  const M = ['light', 'medium', 'high', 'opus', 'max'], cx = 60, cy = 58, R = 48
+  const pt = (a: number, r: number) => `${(cx + r * Math.cos(a)).toFixed(1)} ${(cy - r * Math.sin(a)).toFixed(1)}`
   const k = livello ? M.indexOf(livello) : -1
   const out: string[] = lavora ? [ANIM] : []
-  out.push(`<circle cx="${cx}" cy="${cy}" r="${R + 4}" style="fill:#fafaf7;stroke:#d6d6cf;stroke-width:1.5"/>`)
   M.forEach((m, i) => {
-    const [x0, y0] = pt(ang(i / 5) - 0.02, R), [x1, y1] = pt(ang((i + 1) / 5) + 0.02, R)
-    out.push(`<path d="M ${x0} ${y0} A ${R} ${R} 0 0 1 ${x1} ${y1}" style="fill:none;stroke:${tinta ? COL[m] : '#8a8a84'};stroke-width:${i === k ? 6 : 3};opacity:${i === k ? 1 : 0.45}"${i === k && lavora ? ' class="gp"' : ''}/>`)
+    const a0 = Math.PI - (i * Math.PI) / 5 - 0.03, a1 = Math.PI - ((i + 1) * Math.PI) / 5 + 0.03
+    const on = i === k
+    out.push(`<path d="M ${pt(a0, R)} A ${R} ${R} 0 0 1 ${pt(a1, R)}" style="fill:none;stroke:${tinta ? COL[m] : '#8a8a84'};stroke-width:${on ? 10 : 7};opacity:${on ? 1 : 0.35}"${on && lavora ? ' class="gp"' : ''}/>`)
   })
-  for (let j = 0; j <= 20; j++) {
-    const big = j % 4 === 0, a = ang(j / 20)
-    const [x0, y0] = pt(a, R - 4), [x1, y1] = pt(a, R - (big ? 12 : 8))
-    out.push(`<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" style="stroke:#55554f;stroke-width:${big ? 1.6 : 0.8}"/>`)
-    if (big) { const [tx, ty] = pt(a, R - 20); out.push(`<text x="${tx}" y="${(+ty + 3).toFixed(1)}" text-anchor="middle" class="sm mu">${j / 2}</text>`) }
+  if (k >= 0) {
+    const fr = ({ low: 0.08, medium: 1 / 3, high: 2 / 3, max: 0.92 } as Record<string, number>)[impegno] ?? 0.5
+    const a = Math.PI - ((k + fr) * Math.PI) / 5
+    const [amp, sec] = ({ low: [2, 2], medium: [4, 1.4], high: [7, 0.9], max: [11, 0.5] } as Record<string, number[]>)[impegno] ?? [4, 1.4]
+    const sw = lavora ? `<animateTransform attributeName="transform" type="rotate" values="${-amp} ${cx} ${cy};${amp} ${cx} ${cy};${-amp} ${cx} ${cy}" dur="${sec}s" repeatCount="indefinite"/>` : ''
+    out.push(`<line x1="${cx}" y1="${cy}" x2="${pt(a, R - 12).replace(' ', '" y2="')}" style="stroke:#55554f;stroke-width:2.5;stroke-linecap:round">${sw}</line>`)
   }
-  const f = Math.max(0, Math.min(1, vel / MAXV)), a = ang(f)
-  const [nx, ny] = pt(a, R - 10), [bx, by] = pt(a + Math.PI, 8)
-  const vib = lavora ? `<animateTransform attributeName="transform" type="rotate" values="-1.5 ${cx} ${cy};1.5 ${cx} ${cy};-1.5 ${cx} ${cy}" dur="0.4s" repeatCount="indefinite"/>` : ''
-  out.push(`<line x1="${bx}" y1="${by}" x2="${nx}" y2="${ny}" style="stroke:#c0392b;stroke-width:2.2;stroke-linecap:round">${vib}</line>`)
-  out.push(`<circle cx="${cx}" cy="${cy}" r="5" style="fill:#3a3a36"/>`)
-  out.push(`<text x="${cx}" y="${cy + 22}" text-anchor="middle" style="font-weight:600">${kt(vel)}</text><text x="${cx}" y="${cy + 32}" text-anchor="middle" class="sm mu">token/min</text>`)
+  out.push(`<circle cx="${cx}" cy="${cy}" r="4" style="fill:#55554f"/>`)
   const nome = k >= 0 ? M[k].toUpperCase() : 'ferma'
-  out.push(`<text x="${cx}" y="${cy + 46}" text-anchor="middle" class="sm"${k >= 0 && tinta ? ` style="fill:${COL[M[k]]}"` : ''}>${nome}${impegno ? ' · ' + impegno : ''}${dir === '▲' ? ' ↑' : dir === '▼' ? ' ↓' : ''}</text>`)
-  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="90" viewBox="0 0 140 132">${STILE}${out.join('')}</svg>`, width: 96 }
+  out.push(`<text x="${cx}" y="${cy + 16}" text-anchor="middle" class="sm"${k >= 0 && tinta ? ` style="fill:${COL[M[k]]}"` : ''}>${nome}</text>`)
+  if (k >= 0 && impegno) out.push(`<text x="${cx}" y="${cy + 27}" text-anchor="middle" class="mu">${impegno}</text>`)
+  if (dir === '▲' || dir === '▼') out.push(`<text x="${cx + 34}" y="${cy + 16}" text-anchor="middle" style="fill:${tinta ? (dir === '▲' ? COL.high : COL.medium) : '#55554f'}">${dir === '▲' ? '↑' : '↓'}</text>`)
+  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="90" viewBox="0 0 120 90">${STILE}${out.join('')}</svg>`, width: 120 }
 }
 
 // Grid of the 4 gears: colour, name, agents used and their tokens in this session.
@@ -655,7 +650,7 @@ export const register: Register = (on, options) => {
           {r5 ? (desk ? scritta(r5) : <Text dimColor>{r5}</Text>) : null}
           {desk && (d.stok || d.tok) ? (() => { const g = svgBarra(d.perliv ?? {}, d.stok || d.tok, tinta); return <Svg source={g.source} alt="chi ha usato i token" width={g.width} height={46} /> })() : null}
         </Box>
-        {desk ? (() => { const sMin = lav0 ? (oraJ - inizio) / 60000 : 0; const c = svgCruscotto(d.livello ?? livChat(d.chat), d.dir, tinta, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, p0?.effort ?? '', sMin > 0.05 ? Math.round(car / sMin) : 0); return <Box flexShrink={0}><Svg source={c.source} alt="contachilometri: token al minuto" width={c.width} height={90} /></Box> })() : null}
+        {desk ? (() => { const c = svgCruscotto(d.livello ?? livChat(d.chat), d.dir, tinta, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, p0?.effort ?? ''); return <Box flexShrink={0}><Svg source={c.source} alt="cruscotto marcia" width={c.width} height={90} /></Box> })() : null}
         {desk ? (() => { const g = svgGriglia(d.perliv ?? {}, tinta, d.livello); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={84} /></Box> })() : null}
         </Box>
         {desk ? <Box flexDirection="row" justifyContent="flex-end"><Svg source={`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="16" viewBox="0 0 80 16">${STILE}<text x="80" y="12" class="sm mu" text-anchor="end">Gear ${VERSIONE}</text></svg>`} alt={`Gear ${VERSIONE}`} width={80} height={16} /></Box> : <Text dimColor>Gear {VERSIONE}</Text>}
