@@ -91,6 +91,8 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null) {
   // Tokens of the current job per model; nothing while the job has used none yet.
   if (d.tokmod && d.tokmod.length > 0) { sep(); d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); t(nomeModello(m).split(' ')[0], '', tinta ? colMod(m) : undefined); sp(4); t(`${kt(n)} token`) }) }
   else if (d.tok > 0) { sep(); t(`${kt(d.tok)} token`, 'mu') }
+  // Whole session: all tokens so far and how many agents it has used.
+  if (d.stok) { sep(); t('sessione', 'mu'); sp(4); t(`${kt(d.stok)} token`); if (d.sag) { sp(6); t(`${d.sag} agenti`, 'mu') } }
   if (!compact) {
     // Only what is useful now: the current job (since your last message); counts at zero and a missing task list are left out.
     const n: [number, string, string | undefined][] = [[d.lavorano, '▶', COL.medium], [d.fermi, '⏸', COL.high], [d.completi, '✓', undefined], [d.interrotti, '✗', undefined]]
