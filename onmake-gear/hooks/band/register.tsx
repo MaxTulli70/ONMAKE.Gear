@@ -7,7 +7,7 @@ import type { Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.54'
+const VERSIONE = '0.6.55'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -61,6 +61,17 @@ const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 const largo = (t: string) => Math.ceil([...t].reduce((w, ch) => w + (ch === ' ' ? 3.5 : /[A-Z0-9%]/.test(ch) ? 8.2 : /[▶⏸✓✗↓↑]/.test(ch) ? 10.3 : 6.7), 0))
 const STILE = '<style>text{font:400 12px -apple-system,system-ui,sans-serif;fill:#55554f}.sm{font-size:10px;letter-spacing:.3px}.mu{fill:#8a8a84}.v{fill:#d6d6cf}@media(prefers-color-scheme:dark){text{fill:#c9c9d1}.mu{fill:#8d8d97}.v{fill:#3a3a42}}</style>'
 
+// Optimization index 0-100: how low the work ran. Weight per token: Haiku 1, Sonnet 2 (high 3), Opus 5; 0 = all Opus, 100 = all Haiku.
+function indiceOtt(d: Dati) {
+  const W: Record<string, number> = { light: 1, medium: 2, high: 3, opus: 5 }
+  const pesoChat = /haiku/.test(d.chat) ? 1 : /sonnet/.test(d.chat) ? 2 : 5
+  const tot = d.stok || d.tok
+  if (!tot) return null
+  const ag = ['light', 'medium', 'high', 'opus'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0), 0)
+  const pesato = ['light', 'medium', 'high', 'opus'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0) * W[k], 0) + Math.max(0, tot - ag) * pesoChat
+  return Math.max(0, Math.min(100, Math.round((1 - pesato / (tot * 5)) / 0.8 * 100)))
+}
+
 function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null) {
   const out: string[] = []
   let x = 0
@@ -99,6 +110,8 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null) {
   if (d.tokmod && d.tokmod.length > 0) { sep(); d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); t(nomeModello(m).split(' ')[0], '', tinta ? colMod(m) : undefined); sp(4); t(`${kt(n)} token`) }) }
   else if (d.tok > 0) { sep(); t(`${kt(d.tok)} token`, 'mu') }
   // Whole session: all tokens so far and how many agents it has used.
+  const io = indiceOtt(d)
+  if (io !== null) { sep(); t('indice', 'mu'); sp(4); t(`${io}/100`, '', tinta ? (io >= 50 ? COL.medium : io >= 20 ? COL.high : '#c0714f') : undefined) }
   if (d.stok) { sep(); t('questa chat', 'mu'); sp(4); t(`${kt(d.stok)} token`); if (d.sag) { sp(6); t(`${d.sag} agenti`, 'mu') } }
   if (!compact) {
     // Only what is useful now: the current job (since your last message); counts at zero and a missing task list are left out.
@@ -447,14 +460,8 @@ export const register: Register = (on, options) => {
     // Saving in tokens, not money: tokens the agents did on models lower than Opus, and their share of the session.
     const bassi = ['light', 'medium', 'high'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0), 0)
     const r4 = bassi > 0 ? `risparmio ${kt(bassi)} token su modelli sotto Opus${d.stok ? ` (${bassi / d.stok < 0.001 ? 'meno dello 0,1' : (bassi / d.stok * 100).toFixed(1).replace('.', ',')}%)` : ''}` : ''
-    // Optimization index 0-100: how low the work ran. Weight per token: Haiku 1, Sonnet 2 (high 3), Opus 5; 0 = all Opus, 100 = all Haiku.
-    const W: Record<string, number> = { light: 1, medium: 2, high: 3, opus: 5 }
-    const pesoChat = /haiku/.test(d.chat) ? 1 : /sonnet/.test(d.chat) ? 2 : 5
-    const totI = d.stok || d.tok
-    const agI = ['light', 'medium', 'high', 'opus'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0), 0)
-    const pesato = ['light', 'medium', 'high', 'opus'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0) * W[k], 0) + Math.max(0, totI - agI) * pesoChat
-    const indice = totI ? Math.round((1 - pesato / (totI * 5)) / 0.8 * 100) : null
-    const r5 = indice === null ? '' : `indice ottimizzazione ${Math.max(0, Math.min(100, indice))}/100 (0 tutto Opus, 100 tutto Haiku)`
+    const indice = indiceOtt(d)
+    const r5 = indice === null ? '' : `indice ottimizzazione ${indice}/100 (0 tutto Opus, 100 tutto Haiku)`
     const r2 = d.righe.length === 0 && d.interrotti === 0 ? 'Nessun agente: lavora solo la chat.' : ''
     const icona: Record<string, string> = { lavora: '▶', fermo: '⏸', completato: '✓' }
 
