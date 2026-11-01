@@ -7,7 +7,7 @@ import type { Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.45'
+const VERSIONE = '0.6.46'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -15,6 +15,8 @@ const passo = atom({ plugin: 'onmake-gear', key: 'passo' } as const, null as Pas
 const aperta = atom({ plugin: 'onmake-gear', key: 'aperta' } as const, false)
 const sessioni = atom({ plugin: 'onmake-gear', key: 'sessioni' } as const, [] as Sessione[])
 const scelta = atom({ plugin: 'onmake-gear', key: 'scelta' } as const, '')
+const vista = atom({ plugin: 'onmake-gear', key: 'vista' } as const, 'tot')
+const reset = atom({ plugin: 'onmake-gear', key: 'reset' } as const, '')
 const comando = atom({ plugin: 'onmake-gear', key: 'comando' } as const, '')
 
 // 'claude-opus-5-5' or 'opus-5-5' -> 'Opus 5.5'
@@ -29,7 +31,9 @@ async function home($: EngineInterface) {
 // Runs the script on this session's transcript; the answer is a few hundred bytes of JSON.
 async function ricarica($: EngineInterface) {
   const script = `${$.plugin.root}/scripts/pannello.py`
-  const r = await $.process.run(['python3', script, '--cartella', await $.session.cwd(), '--sessione', await $.session.id(), '--json'])
+  // Workflow view: only what came after the partial reset (or after the start, if never reset).
+  const da = (await read($, vista).catch(() => 'tot')) === 'wf' ? await read($, reset).catch(() => '') : ''
+  const r = await $.process.run(['python3', script, '--cartella', await $.session.cwd(), '--sessione', await $.session.id(), '--json', ...(da ? ['--da', da] : [])])
   if (r.exitCode !== 0) return undefined
   const d = JSON.parse(r.stdout) as Dati
   await update($, dati, () => d)
@@ -155,7 +159,7 @@ function svgBarra(pl: Record<string, [number, number]>, tot: number, tinta: bool
   const ag = liv.reduce((a, k) => a + (pl[k]?.[1] ?? 0), 0)
   const parti: [string, number, string][] = [['chat', Math.max(0, tot - ag), '#c0714f'], ...liv.map(k => [k.toUpperCase(), pl[k]?.[1] ?? 0, COL[k]] as [string, number, string])]
   let x = 0, lx = 0
-  const out: string[] = [`<text x="0" y="10" class="mu sm">token di questa chat per chi li ha usati</text>`, `<rect x="0" y="16" width="${W}" height="10" rx="3" class="v"/>`]
+  const out: string[] = [`<text x="0" y="10" class="mu sm">chi ha usato i token</text>`, `<rect x="0" y="16" width="${W}" height="10" rx="3" class="v"/>`]
   for (const [nome, n, col] of parti) {
     if (!tot || !n) continue
     const w = Math.max(2, n / tot * W)
@@ -424,6 +428,8 @@ export const register: Register = (on, options) => {
     const testa = desk ? testaDesk : testaTesto
     if (!open) return stack(testa)
 
+    const v = await read($, vista).catch(() => 'tot')
+    const rs = await read($, reset).catch(() => '')
     const scritta = (s: string) => { const g = svgScritta(s); return <Svg source={g.source} alt={s} width={g.width} height={18} /> }
     // Facts of the current job (since your last message): time active, tokens split chat/agents, steps.
     const tokAg = d.righe.reduce((a, r) => a + (r.tok || 0), 0)
@@ -431,16 +437,27 @@ export const register: Register = (on, options) => {
     if (d.tot > 0) parti.push(`passi ${d.fatti} di ${d.tot}`)
     const r1 = parti.join(' · ')
     // Whole session, and the cost estimate (same tokens all in Opus as the reference).
-    const r3 = [d.sel ? `questa chat attiva da ${dur(d.sel)}` : 'questa chat', d.stok ? `${kt(d.stok)} token` : '', d.sag ? `${d.sag} agenti` : '', d.cr ? `cache riletta ${kt(d.cr)} token` : ''].filter(Boolean).join(' · ')
+    const r3 = [`${v === 'wf' ? 'workflow' : 'chat'}${d.sel ? ' attiva ' + dur(d.sel) : ''}`, d.stok ? `${kt(d.stok)} token` : '', d.sag ? `${d.sag} agenti` : '', d.cr ? `cache ${kt(d.cr)}` : ''].filter(Boolean).join(' · ')
     // Saving in tokens, not money: tokens the agents did on models lower than Opus, and their share of the session.
     const bassi = ['light', 'medium', 'high'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0), 0)
-    const r4 = bassi > 0 ? `risparmio: ${kt(bassi)} token fatti da modelli più bassi di Opus${d.stok ? ` (${(bassi / d.stok * 100).toFixed(1).replace('.', ',')}% di questa chat)` : ''}` : ''
+    const r4 = bassi > 0 ? `risparmio: ${kt(bassi)} token fatti da modelli più bassi di Opus${d.stok ? ` (${bassi / d.stok < 0.001 ? 'meno dello 0,1' : (bassi / d.stok * 100).toFixed(1).replace('.', ',')}% ${v === 'wf' ? 'del workflow' : 'della chat'})` : ''}` : ''
     const r2 = d.righe.length === 0 && d.interrotti === 0 ? 'Nessun agente: lavora solo la chat.' : ''
     const icona: Record<string, string> = { lavora: '▶', fermo: '⏸', completato: '✓' }
+
+    const scegli = async (x: string) => { await update($, vista, () => x); last = 0; await ricarica($).catch(() => undefined) }
+    const azzera = async () => { const ora = new Date(await $.clock.now()).toISOString(); await update($, reset, () => ora); await scegli('wf'); $.ui.toast('Gear: workflow azzerato da adesso') }
+    const sel = (
+      <Box flexDirection="row" gap={2} alignItems="center">
+        {tastino('tot', v === 'tot' ? '● totale chat' : '○ totale chat', () => scegli('tot'), v === 'tot' ? '#55554f' : undefined)}
+        {tastino('wf', v === 'wf' ? `● workflow${rs ? ' da ' + new Date(rs).toTimeString().slice(0, 5) : ''}` : `○ workflow${rs ? ' da ' + new Date(rs).toTimeString().slice(0, 5) : ''}`, () => scegli('wf'), v === 'wf' ? '#55554f' : undefined)}
+        {tastino('reset', '↺ reset', azzera)}
+      </Box>
+    )
 
     return stack(
       <Box flexDirection="column" width={e.props.bodyColumns}>
         {testa}
+        {sel}
         {r2 ? (desk ? scritta(r2) : <Text dimColor>{r2}</Text>) : null}
         {d.righe.map((x, i) => {
           if (!desk) return (
@@ -458,7 +475,7 @@ export const register: Register = (on, options) => {
           {desk ? scritta(r1) : <Text dimColor>{r1}</Text>}
           {desk ? scritta(r3) : <Text dimColor>{r3}</Text>}
           {r4 ? (desk ? scritta(r4) : <Text dimColor>{r4}</Text>) : null}
-          {desk && (d.stok || d.tok) ? (() => { const g = svgBarra(d.perliv ?? {}, d.stok || d.tok, tinta); return <Svg source={g.source} alt="token di questa chat per chi li ha usati" width={g.width} height={46} /> })() : null}
+          {desk && (d.stok || d.tok) ? (() => { const g = svgBarra(d.perliv ?? {}, d.stok || d.tok, tinta); return <Svg source={g.source} alt="chi ha usato i token" width={g.width} height={46} /> })() : null}
         </Box>
         {desk ? (() => { const g = svgGriglia(d.perliv ?? {}, tinta, d.livello); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={84} /></Box> })() : null}
         </Box>

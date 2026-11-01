@@ -56,6 +56,8 @@ def costo(model, v, P):
     f = famiglia(model)
     return None if f not in P else sum(a * b for a, b in zip(v, P[f])) / 1e6
 
+DA = None  # --da: ora del reset parziale (None = tutta la chat)
+
 def leggi(path):
     """-> dict(model, v=[in,out,cw,cr], a, b, tools, todos)"""
     msgs, ts, model, tools, todos = {}, [], "?", 0, None
@@ -68,6 +70,8 @@ def leggi(path):
         except ValueError:
             continue
         t = tempo(d.get("timestamp"))
+        if DA and (not t or t < DA):  # vista dal reset: solo cio' che viene dopo
+            continue
         if t:
             ts.append(t)
         m = d.get("message")
@@ -147,6 +151,7 @@ def agenti(sess):
         nome = tipo.split(":")[-1] if liv == "altro" else liv
         x.update(tipo=tipo.split(":")[-1], liv=liv, nome=nome, desc=meta.get("description", ""), fine=fine, ago=ago, stato=stato)
         out.append(x)
+    out = [x for x in out if not DA or x["a"]]  # dal reset: solo gli agenti che hanno lavorato dopo
     out.sort(key=lambda x: (x["a"] is None, x["a"] or datetime.min.replace(tzinfo=timezone.utc)))
     prec = None
     for x in out:
@@ -343,9 +348,11 @@ if __name__ == "__main__":
     p.add_argument("--cartella", default=os.getcwd())
     p.add_argument("--sessione")
     p.add_argument("--json", action="store_true")
+    p.add_argument("--da")
     p.add_argument("--html")
     a = p.parse_args()
     sess = sessione(a.cartella, a.sessione)
+    DA = tempo(a.da) if a.da else None
     r = riepilogo(sess)
     if a.html:
         os.makedirs(os.path.dirname(a.html), exist_ok=True)
