@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.90'
+const VERSIONE = '0.6.91'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -641,9 +641,10 @@ async function apriSito($: EngineInterface) {
 }
 
 async function apriPannello($: EngineInterface) {
-  const file = `${await home($)}/.config/onmake-gear/pannello.html`
+  const sid = await $.session.id()
+  const file = `${await home($)}/.config/onmake-gear/pannello-${String(sid).replace(/[^A-Za-z0-9]/g, '').slice(0, 12)}.html`
   const script = `${$.plugin.root}/scripts/pannello.py`
-  const r = await $.process.run(['python3', script, '--cartella', await $.session.cwd(), '--sessione', await $.session.id(), '--html', file])
+  const r = await $.process.run(['python3', script, '--cartella', await $.session.cwd(), '--sessione', sid, '--html', file, '--lingua', (await read($, lingua).catch(() => 'it')) || 'it'])
   if (r.exitCode !== 0) return false
   const windows = (await $.env.get('OS')) === 'Windows_NT'
   const mac = !windows && (await $.process.run(['uname'])).stdout.trim() === 'Darwin'

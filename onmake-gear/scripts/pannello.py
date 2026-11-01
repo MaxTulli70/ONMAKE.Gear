@@ -231,10 +231,66 @@ def breve(r):
                 righe=[dict(liv=x["liv"], nome=x["nome"], tipo=x["tipo"], dir=x["dir"], model=x["model"], tok=x["v"][0] + x["v"][1] + x["v"][2], fine=x["fine"],
                             stato=x["stato"], ago=int(x["ago"] or 0), desc=x["desc"][:36]) for x in vis])
 
-STATI = [("lavora", "Lavorano", "▶"), ("fermo", "Fermi", "⏸"), ("completato", "Completati", "✓"), ("interrotto", "Interrotti", "✗")]
+STATI = [("lavora", "st_lavora", "▶"), ("fermo", "st_fermo", "⏸"), ("completato", "st_completato", "✓"), ("interrotto", "st_interrotto", "✗")]
+
+LANGS = ["it", "en", "de", "fr", "es"]
+LINGUA = "it"
+TR = {  # testo visibile: (it, en, de, fr, es)
+    "nessuna": ("nessuna", "none", "keine", "aucune", "ninguna"),
+    "marcia": ("marcia", "gear", "Gang", "vitesse", "marcha"),
+    "agenti": ("agenti", "agents", "Agenten", "agents", "agentes"),
+    "tempo": ("tempo attivo", "active time", "aktive Zeit", "temps actif", "tiempo activo"),
+    "stimato": (" / stimato", " / estimated", " / geschätzt", " / estimé", " / estimado"),
+    "tokusati": ("token usati", "tokens used", "verwendete Tokens", "tokens utilisés", "tokens usados"),
+    "costo": ("costo stimato", "estimated cost", "geschätzte Kosten", "coût estimé", "coste estimado"),
+    "rispvs": ("risparmio vs Opus", "savings vs Opus", "Ersparnis ggü. Opus", "économie vs Opus", "ahorro vs Opus"),
+    "nd": ("n/d", "n/a", "k. A.", "n/d", "n/d"),
+    "nostep": ("Nessun elenco di passi in questa sessione: avanzamento non misurabile.", "No step list in this session: progress cannot be measured.",
+               "Keine Schrittliste in dieser Sitzung: Fortschritt nicht messbar.", "Aucune liste d'étapes dans cette session : avancement non mesurable.",
+               "Ninguna lista de pasos en esta sesión: avance no medible."),
+    "passi": ("{f} di {t} passi", "{f} of {t} steps", "{f} von {t} Schritten", "{f} sur {t} étapes", "{f} de {t} pasos"),
+    "st_lavora": ("Lavorano", "Working", "Arbeiten", "En cours", "Trabajando"),
+    "st_fermo": ("Fermi", "Idle", "Pausiert", "À l'arrêt", "Detenidos"),
+    "st_completato": ("Completati", "Completed", "Abgeschlossen", "Terminés", "Completados"),
+    "st_interrotto": ("Interrotti", "Interrupted", "Abgebrochen", "Interrompus", "Interrumpidos"),
+    "completato": ("completato", "completed", "abgeschlossen", "terminé", "completado"),
+    "incorso": ("in corso", "running", "läuft", "en cours", "en curso"),
+    "interrotto": ("interrotto", "interrupted", "abgebrochen", "interrompu", "interrumpido"),
+    "fermoda": ("fermo da {d}", "idle for {d}", "pausiert seit {d}", "à l'arrêt depuis {d}", "detenido desde hace {d}"),
+    "prec": ("+ {n} precedenti", "+ {n} earlier", "+ {n} frühere", "+ {n} précédents", "+ {n} anteriores"),
+    "chatp": ("Chat principale", "Main chat", "Haupt-Chat", "Chat principal", "Chat principal"),
+    "noag": ("Nessun agente.", "No agents.", "Keine Agenten.", "Aucun agent.", "Ningún agente."),
+    "linea": ("Linea del tempo", "Timeline", "Zeitleiste", "Chronologie", "Línea de tiempo"),
+    "daa": ("da {a} a {b}", "from {a} to {b}", "von {a} bis {b}", "de {a} à {b}", "de {a} a {b}"),
+    "pause": ("{n} pause lunghe accorciate", "{n} long pauses shortened", "{n} lange Pausen gekürzt", "{n} longues pauses raccourcies", "{n} pausas largas acortadas"),
+    "tokmod": ("Token per modello", "Tokens per model", "Tokens pro Modell", "Tokens par modèle", "Tokens por modelo"),
+    "tokveri": ("Token veri", "Actual tokens", "Echte Tokens", "Tokens réels", "Tokens reales"),
+    "cache": ("Cache letta", "Cache read", "Gelesener Cache", "Cache lu", "Caché leída"),
+    "permarcia": ("Per marcia", "Per gear", "Pro Gang", "Par vitesse", "Por marcha"),
+    "token": ("Token", "Tokens", "Tokens", "Tokens", "Tokens"),
+    "costostim": ("Costo stimato", "Estimated cost", "Geschätzte Kosten", "Coût estimé", "Coste estimado"),
+    "avanz": ("Avanzamento", "Progress", "Fortschritt", "Avancement", "Avance"),
+    "agenti2": ("Agenti", "Agents", "Agenten", "Agents", "Agentes"),
+    "th": (("Agente", "Modello", "Stato", "Strumenti", "Token", "Durata", "Compito"), ("Agent", "Model", "Status", "Tools", "Tokens", "Duration", "Task"),
+           ("Agent", "Modell", "Status", "Werkzeuge", "Tokens", "Dauer", "Aufgabe"), ("Agent", "Modèle", "Statut", "Outils", "Tokens", "Durée", "Tâche"),
+           ("Agente", "Modelo", "Estado", "Herramientas", "Tokens", "Duración", "Tarea")),
+    "sess": ("sessione", "session", "Sitzung", "session", "sesión"),
+    "agg": ("si aggiorna ogni 5 s · dati locali", "refreshes every 5 s · local data", "aktualisiert alle 5 s · lokale Daten", "se met à jour toutes les 5 s · données locales", "se actualiza cada 5 s · datos locales"),
+    "senzaprezzo": (" Senza prezzo noto, esclusi: {m}.", " No known price, excluded: {m}.", " Kein bekannter Preis, ausgenommen: {m}.", " Sans prix connu, exclus : {m}.", " Sin precio conocido, excluidos: {m}."),
+    "foot": ("Costo e risparmio sono stime: stessi token tutti in Opus (${o}) contro il costo reale. Cache letta {c} token. Prezzi in ~/.config/onmake-gear/prezzi.json.",
+             "Cost and savings are estimates: the same tokens all on Opus (${o}) against the actual cost. Cache read {c} tokens. Prices in ~/.config/onmake-gear/prezzi.json.",
+             "Kosten und Ersparnis sind Schätzungen: dieselben Tokens alle auf Opus (${o}) gegenüber den tatsächlichen Kosten. Gelesener Cache {c} Tokens. Preise in ~/.config/onmake-gear/prezzi.json.",
+             "Coût et économie sont des estimations : les mêmes tokens tous sur Opus (${o}) contre le coût réel. Cache lu {c} tokens. Prix dans ~/.config/onmake-gear/prezzi.json.",
+             "Coste y ahorro son estimaciones: los mismos tokens todos en Opus (${o}) frente al coste real. Caché leída {c} tokens. Precios en ~/.config/onmake-gear/prezzi.json."),
+}
+
+def T(k, **kw):
+    v = TR[k][LANGS.index(LINGUA)]
+    return v.format(**kw) if kw else v
 
 def ETI(x):
-    return {"completato": "completato", "lavora": "in corso", "interrotto": "interrotto"}.get(x["stato"]) or f"fermo da {dur(x['ago'])}"
+    s = x["stato"]
+    return T({"completato": "completato", "lavora": "incorso", "interrotto": "interrotto"}[s]) if s in ("completato", "lavora", "interrotto") else T("fermoda", d=dur(x["ago"]))
 
 def kt(n):
     return f"{n/1e9:.1f}G" if n >= 1e9 else (f"{n/1e6:.1f}M" if n >= 1e6 else (f"{n/1e3:.0f}K" if n >= 1e3 else str(n)))
@@ -251,32 +307,33 @@ def barre(voci, unita=kt):
 
 def pagina(r, sess):
     ag, esc = r["ag"], html.escape
-    pc = lambda x: "n/d" if x is None else f"{x*100:.0f}%"
+    pc = lambda x: T("nd") if x is None else f"{x*100:.0f}%"
     tk = lambda x: sum(x["v"][:3])
     liv = r["livello"]
     n = {k: sum(1 for x in ag if x["stato"] == k) for k, _, _ in STATI}
     # KPI
-    marcia = (f'<b><i class="dot" style="background:{COL[liv]}"></i>{liv.upper()} {r["dir"]}</b>' if liv else '<b>nessuna</b>')
+    marcia = (f'<b><i class="dot" style="background:{COL[liv]}"></i>{liv.upper()} {r["dir"]}</b>' if liv else f'<b>{T("nessuna")}</b>')
     conti = " ".join(f'<span class="s-{k}">{ic} {n[k]}</span>' for k, _, ic in STATI if n[k] or k != "interrotto")
     tempo = dur(r["el"]) + (f' <small>/ ~{dur(r["el"] + r["eta"])}</small>' if r["eta"] else "")
     rb = max(0.0, min(1.0, r["risp"] or 0))
-    risp = (f'<b>{"" if round(r["risp"]*100) == 0 else ("−" if r["risp"] > 0 else "+")}{abs(r["risp"])*100:.0f}%</b><div class="mini"><i style="width:{rb*100:.0f}%"></i></div>' if r["risp"] is not None else "<b>n/d</b>")
-    kpi = (f'<div class="k"><div>{marcia}<span>marcia</span></div><div><b class="cn">{conti}</b><span>agenti</span></div>'
-           f'<div><b>{tempo}</b><span>tempo attivo{" / stimato" if r["eta"] else ""}</span></div><div><b>{kt(r["tok"])}</b><span>token usati</span></div>'
-           f'<div><b>${r["reale"]:.2f}</b><span>costo stimato</span></div><div>{risp}<span>risparmio vs Opus</span></div></div>')
+    risp = (f'<b>{"" if round(r["risp"]*100) == 0 else ("−" if r["risp"] > 0 else "+")}{abs(r["risp"])*100:.0f}%</b><div class="mini"><i style="width:{rb*100:.0f}%"></i></div>' if r["risp"] is not None else "<b>{T('nd')}</b>")
+    kpi = (f'<div class="k"><div>{marcia}<span>{T("marcia")}</span></div><div><b class="cn">{conti}</b><span>{T("agenti")}</span></div>'
+           f'<div><b>{tempo}</b><span>{T("tempo")}{T("stimato") if r["eta"] else ""}</span></div><div><b>{kt(r["tok"])}</b><span>{T("tokusati")}</span></div>'
+           f'<div><b>${r["reale"]:.2f}</b><span>{T("costo")}</span></div><div>{risp}<span>{T("rispvs")}</span></div></div>')
     # avanzamento
     todo = "".join(f'<li class="{esc(t.get("status","pending"))}">{"✓" if t.get("status")=="completed" else ("◔" if t.get("status")=="in_progress" else "○")} {esc(str(t.get("content","")))}</li>' for t in r["todos"])
-    avanz = (f'<div class="pr"><b>{pc(r["perc"])}</b><span>{r["fatti"]} di {r["tot"]} passi</span></div><div class="pb"><i style="width:{r["perc"]*100:.0f}%"></i></div><ul class="td">{todo}</ul>'
-             if r["tot"] else '<p class="mu">Nessun elenco di passi in questa sessione: avanzamento non misurabile.</p>')
+    avanz = (f'<div class="pr"><b>{pc(r["perc"])}</b><span>{T("passi", f=r["fatti"], t=r["tot"])}</span></div><div class="pb"><i style="width:{r["perc"]*100:.0f}%"></i></div><ul class="td">{todo}</ul>'
+             if r["tot"] else f'<p class="mu">{T("nostep")}</p>')
     # workflow a nodi, raggruppato per stato
     def nodo(x):
         return (f'<div class="nd {x["stato"]}" style="--c:{COL[x["liv"]]}" title="{esc(x["desc"])}"><div class="nh"><i class="dot"></i>{esc(x["nome"])} {x["dir"]}<em>{esc(x["model"])}</em></div>'
                 f'<div class="nx">{esc(x["desc"]) or "&nbsp;"}</div><div class="nf">{kt(tk(x))} tok · {ETI(x)}</div></div>')
-    altri = lambda m: f'<p class="mu sm">+ {m-6} precedenti</p>' if m > 6 else ""
-    corsie = "".join(f'<div class="ln"><h3>{ic} {t} <span>{n[k]}</span></h3>{"<i class=ar>↓</i>".join(nodo(x) for x in [y for y in ag if y["stato"] == k][-6:])}{altri(n[k])}</div>'
+    altri = lambda m: f'<p class="mu sm">{T("prec", n=m-6)}</p>' if m > 6 else ""
+    corsie = "".join(f'<div class="ln"><h3>{ic} {T(t)} <span>{n[k]}</span></h3>{"<i class=ar>↓</i>".join(nodo(x) for x in [y for y in ag if y["stato"] == k][-6:])}{altri(n[k])}</div>'
                      for k, t, ic in STATI if n[k])
-    flusso = (f'<div class="wf"><div class="nd root"><div class="nh">Chat principale<em>{esc(r["main"]["model"])}</em></div><div class="nf">{kt(sum(r["main"]["v"][:3]))} tok</div></div>'
-              f'<i class="ar big">↓</i><div class="lns">{corsie or "<p class=mu>Nessun agente.</p>"}</div></div>')
+    noag = f"<p class=mu>{T('noag')}</p>"
+    flusso = (f'<div class="wf"><div class="nd root"><div class="nh">{T("chatp")}<em>{esc(r["main"]["model"])}</em></div><div class="nf">{kt(sum(r["main"]["v"][:3]))} tok</div></div>'
+              f'<i class="ar big">↓</i><div class="lns">{corsie or noag}</div></div>')
     # linea del tempo: etichetta, traccia, durata in tre colonne
     ok = [x for x in ag if x["a"] and x["b"]]
     gant = ""
@@ -296,7 +353,8 @@ def pagina(r, sess):
             w = max((pos(x["b"].timestamp()) - pos(x["a"].timestamp())) / sp * 100, 0.8)
             gant += (f'<div class="rw"><span class="rl" title="{esc(x["desc"])}"><i class="dot" style="background:{COL[x["liv"]]}"></i>{esc(x["nome"])}</span>'
                      f'<span class="tr gt"><i class="{x["stato"]}" style="left:{s0:.1f}%;width:{min(w, 100 - s0):.1f}%;background:{COL[x["liv"]]}"></i></span><span class="rv">{dur((x["b"]-x["a"]).total_seconds())}</span></div>')
-        gant = f'<section><h2>Linea del tempo</h2>{gant}<p class="mu sm">da {t0.astimezone().strftime("%d/%m %H:%M")} a {t1.astimezone().strftime("%d/%m %H:%M")}{f" · {len(tagli)} pause lunghe accorciate" if tagli else ""}</p></section>'
+        pz = " · " + T("pause", n=len(tagli)) if tagli else ""
+        gant = f'<section><h2>{T("linea")}</h2>{gant}<p class="mu sm">{T("daa", a=t0.astimezone().strftime("%d/%m %H:%M"), b=t1.astimezone().strftime("%d/%m %H:%M"))}{pz}</p></section>'
     # token per modello (veri e cache in scale separate) e per marcia
     pm, pl = {}, {}
     for x in r["tutti"]:
@@ -306,14 +364,14 @@ def pagina(r, sess):
     mod = sorted(pm.items(), key=lambda k: -k[1][0])
     ordine = lambda k: (["chat"] + LIV).index(pl[k][0]) if pl[k][0] in ["chat"] + LIV else 99
     marce = sorted(pl, key=ordine)
-    graf = (f'<div class="g2"><section><h2>Token per modello</h2><h4>Token veri</h4>{barre([(m, "var(--ac)", v[0]) for m, v in mod])}'
-            f'<h4>Cache letta</h4>{barre([(m, "var(--mu2)", v[1]) for m, v in mod])}</section>'
-            f'<section><h2>Per marcia</h2><h4>Token</h4>{barre([(k, COL[pl[k][0]], pl[k][1]) for k in marce])}'
-            f'<h4>Costo stimato</h4>{barre([(k, COL[pl[k][0]], pl[k][2]) for k in marce], lambda v: f"${v:.2f}")}</section></div>')
+    graf = (f'<div class="g2"><section><h2>{T("tokmod")}</h2><h4>{T("tokveri")}</h4>{barre([(m, "var(--ac)", v[0]) for m, v in mod])}'
+            f'<h4>{T("cache")}</h4>{barre([(m, "var(--mu2)", v[1]) for m, v in mod])}</section>'
+            f'<section><h2>{T("permarcia")}</h2><h4>{T("token")}</h4>{barre([(k, COL[pl[k][0]], pl[k][1]) for k in marce])}'
+            f'<h4>{T("costostim")}</h4>{barre([(k, COL[pl[k][0]], pl[k][2]) for k in marce], lambda v: f"${v:.2f}")}</section></div>')
     tab = "".join(f'<tr><td><i class="dot" style="background:{COL[x["liv"]]}"></i>{esc(x["nome"])} {x["dir"]}</td><td>{esc(x["model"])}</td><td class="s-{x["stato"]}">{ETI(x)}</td>'
                   f'<td>{x["tools"]}</td><td>{kt(tk(x))}</td><td>{dur((x["b"]-x["a"]).total_seconds()) if x["a"] and x["b"] else "?"}</td><td class="ds">{esc(x["desc"])}</td></tr>' for x in ag)
-    nota = (f' Senza prezzo noto, esclusi: {esc(", ".join(r["noprezzo"]))}.' if r["noprezzo"] else "")
-    return f"""<!doctype html><html lang="it"><head><meta charset="utf-8"><meta http-equiv="refresh" content="5"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gear Pannello</title><style>
+    nota = (T("senzaprezzo", m=esc(", ".join(r["noprezzo"]))) if r["noprezzo"] else "")
+    return f"""<!doctype html><html lang="{LINGUA}"><head><meta charset="utf-8"><meta http-equiv="refresh" content="5"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gear Pannello</title><style>
 :root{{--bg:#f6f6f3;--fg:#24242a;--mu:#7a7a80;--mu2:#c4c4cc;--cd:#fff;--ln:#e8e8e2;--ac:#7b9cc4;--ok:#5f9f78;--wa:#c9a04a;--ko:#b97a6e}}
 @media(prefers-color-scheme:dark){{:root{{--bg:#17171b;--fg:#e6e6ec;--mu:#8e8e99;--mu2:#4a4a55;--cd:#202026;--ln:#2d2d35;--ac:#86a6cc;--ok:#7cbf95;--wa:#d9b464;--ko:#c99085}}}}
 *{{box-sizing:border-box}} body{{margin:0 auto;max-width:1080px;padding:16px;background:var(--bg);color:var(--fg);font:13px/1.4 system-ui,-apple-system,sans-serif}}
@@ -342,10 +400,10 @@ section{{background:var(--cd);border:1px solid var(--ln);border-radius:10px;padd
 .s-lavora{{color:var(--ok)}} .s-fermo{{color:var(--wa)}} .s-completato{{color:var(--mu)}} .s-interrotto{{color:var(--ko)}}
 table{{border-collapse:collapse;width:100%;font-size:12px}} td,th{{padding:5px 6px;border-bottom:1px solid var(--ln);text-align:left;white-space:nowrap}} th{{color:var(--mu);font-weight:500}} td.ds{{white-space:normal;min-width:160px}} .w{{overflow-x:auto}}
 @media(max-width:520px){{body{{padding:10px}} .rw{{grid-template-columns:90px 1fr 56px;gap:6px}} .k{{grid-template-columns:1fr 1fr}}}}
-</style></head><body><h1 style="display:flex;align-items:center;gap:8px"><a href="https://www.onmake.it" target="_blank" rel="noopener" title="onmake.it" style="display:inline-flex"><svg width="26" height="27" viewBox="0 0 100 104" role="img" aria-label="ONMAKE"><defs> <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"> <stop offset="0" stop-color="#8fbc7c"/><stop offset="0.45" stop-color="#6aa057"/><stop offset="1" stop-color="#5f9a4e"/> </linearGradient> <linearGradient id="f" x1="0" y1="0" x2="1" y2="1"> <stop offset="0" stop-color="#4a4a48"/><stop offset="1" stop-color="#2f2f2e"/> </linearGradient> </defs> <path d="M50 3 L92.4 27.5 Q94 28.4 94 30.3 L94 73.7 Q94 75.6 92.4 76.5 L50 101 L7.6 76.5 Q6 75.6 6 73.7 L6 30.3 Q6 28.4 7.6 27.5 Z" fill="url(#f)"/> <path d="M50 12.5 L85.5 33 L85.5 71 L50 91.5 L14.5 71 L14.5 33 Z" fill="url(#g)" stroke="#6b6b69" stroke-width="0.8"/> <path d="M14.5 33 L50 12.5 L85.5 33 L85.5 40 Q50 32 14.5 66 Z" fill="#ffffff" opacity="0.12"/> <text x="50" y="58" text-anchor="middle" font-family="Futura, 'Avenir Next', 'Century Gothic', system-ui, sans-serif" font-weight="600" font-size="15.5" textLength="66" lengthAdjust="spacingAndGlyphs" fill="#363634">ONMAKE</text></svg></a>Gear Pannello</h1><span class="mu sm">sessione {esc(os.path.basename(sess)[:8])} · {datetime.now().strftime('%H:%M:%S')} · si aggiorna ogni 5 s · dati locali</span>
-{kpi}<section><h2>Avanzamento</h2>{avanz}</section><section><h2>Workflow</h2>{flusso}</section>{gant}{graf}
-<section><h2>Agenti</h2><div class="w"><table><tr><th>Agente</th><th>Modello</th><th>Stato</th><th>Strumenti</th><th>Token</th><th>Durata</th><th>Compito</th></tr>{tab}</table></div>
-<p class="mu sm">Costo e risparmio sono stime: stessi token tutti in Opus (${r['opus']:.2f}) contro il costo reale. Cache letta {kt(r['cr'])} token. Prezzi in ~/.config/onmake-gear/prezzi.json.{nota}</p></section>
+</style></head><body><h1 style="display:flex;align-items:center;gap:8px"><a href="https://www.onmake.it" target="_blank" rel="noopener" title="onmake.it" style="display:inline-flex"><svg width="26" height="27" viewBox="0 0 100 104" role="img" aria-label="ONMAKE"><defs> <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"> <stop offset="0" stop-color="#8fbc7c"/><stop offset="0.45" stop-color="#6aa057"/><stop offset="1" stop-color="#5f9a4e"/> </linearGradient> <linearGradient id="f" x1="0" y1="0" x2="1" y2="1"> <stop offset="0" stop-color="#4a4a48"/><stop offset="1" stop-color="#2f2f2e"/> </linearGradient> </defs> <path d="M50 3 L92.4 27.5 Q94 28.4 94 30.3 L94 73.7 Q94 75.6 92.4 76.5 L50 101 L7.6 76.5 Q6 75.6 6 73.7 L6 30.3 Q6 28.4 7.6 27.5 Z" fill="url(#f)"/> <path d="M50 12.5 L85.5 33 L85.5 71 L50 91.5 L14.5 71 L14.5 33 Z" fill="url(#g)" stroke="#6b6b69" stroke-width="0.8"/> <path d="M14.5 33 L50 12.5 L85.5 33 L85.5 40 Q50 32 14.5 66 Z" fill="#ffffff" opacity="0.12"/> <text x="50" y="58" text-anchor="middle" font-family="Futura, 'Avenir Next', 'Century Gothic', system-ui, sans-serif" font-weight="600" font-size="15.5" textLength="66" lengthAdjust="spacingAndGlyphs" fill="#363634">ONMAKE</text></svg></a>Gear Pannello</h1><span class="mu sm">{T("sess")} {esc(os.path.basename(sess)[:8])} · {datetime.now().strftime('%H:%M:%S')} · {T("agg")}</span>
+{kpi}<section><h2>{T("avanz")}</h2>{avanz}</section><section><h2>Workflow</h2>{flusso}</section>{gant}{graf}
+<section><h2>{T("agenti2")}</h2><div class="w"><table><tr>{"".join(f"<th>{h}</th>" for h in T("th"))}</tr>{tab}</table></div>
+<p class="mu sm">{T("foot", o=f"{r['opus']:.2f}", c=kt(r['cr']))}{nota}</p></section>
 </body></html>"""
 
 if __name__ == "__main__":
@@ -355,9 +413,11 @@ if __name__ == "__main__":
     p.add_argument("--json", action="store_true")
     p.add_argument("--da")
     p.add_argument("--html")
+    p.add_argument("--lingua", default="it", choices=LANGS)
     a = p.parse_args()
     sess = sessione(a.cartella, a.sessione)
     DA = tempo(a.da) if a.da else None
+    LINGUA = a.lingua
     r = riepilogo(sess)
     if a.html:
         os.makedirs(os.path.dirname(a.html), exist_ok=True)
