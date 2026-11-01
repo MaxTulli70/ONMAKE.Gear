@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.84'
+const VERSIONE = '0.6.85'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -411,6 +411,21 @@ const GUIDA: Record<string, string[]> = {
   es: ['marchas: LIGHT Haiku, MEDIUM y HIGH Sonnet, OPUS Opus, MAX pico', '↑ sube, ↓ baja: marcha respecto al agente anterior', 'barrita: esfuerzo low, medium, high, max', 'live: turno en curso · workflow: desde el reset · total: chat', 'velocímetro: marcha y esfuerzo (L M H O X, 4 pasos cada una)', 'índice 0 todo Opus, 100 todo Haiku (verde ≥50)', 'ahorro: tokens hechos por modelos bajo Opus'],
 }
 
+// Ignition: true in the first second of a turn; the drawings then play their start-up animations once.
+let ACC = false
+let ADESSO = 0
+// Numbers that count up to the new value in about one second instead of jumping.
+const CONTA: Record<string, { da: number; a: number; t0: number }> = {}
+let contando = false
+function conta(k: string, v: number) {
+  const c = CONTA[k]
+  if (!c) { CONTA[k] = { da: v, a: v, t0: 0 }; return v }
+  if (c.a !== v) { const ora = c.t0 ? c.da + (c.a - c.da) * Math.min(1, (ADESSO - c.t0) / 1000) : c.a; CONTA[k] = { da: ora, a: v, t0: ADESSO } }
+  const x = CONTA[k], f = x.t0 ? Math.min(1, (ADESSO - x.t0) / 1000) : 1
+  if (f < 1) contando = true
+  return Math.round(x.da + (x.a - x.da) * f)
+}
+
 function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lavora = false, ora: Attivo | null = null, adesso = 0, vivoTok = 0) {
   const out: string[] = lavora ? [ANIM] : []
   let x = 0
@@ -433,7 +448,8 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
     const h = 4 + i * 2.6
     // while working the active step glows: a soft halo behind it and a slow pulse
     if (lavora && i === k) out.push(`<rect x="${i * 5.5 - 1.5}" y="${18.5 - h}" width="7" height="${h + 3}" rx="2.5" class="gp" style="fill:${tinta ? COL[m] : '#55554f'};opacity:.35;filter:blur(1.5px)"/>`)
-    out.push(`<rect x="${i * 5.5}" y="${20 - h}" width="4" height="${h}" rx="1"${lavora && i === k ? ' class="gp"' : ''}${i <= k ? ` style="fill:${tinta ? COL[m] : '#55554f'}"` : ' class="v"'}/>`)
+    const acc = ACC ? `<animate attributeName="opacity" values="0;0;1" keyTimes="0;${(i * 0.15).toFixed(2)};1" dur="${(0.3 + i * 0.15).toFixed(2)}s" fill="freeze"/>` : ''
+    out.push(`<rect x="${i * 5.5}" y="${20 - h}" width="4" height="${h}" rx="1"${lavora && i === k ? ' class="gp"' : ''}${i <= k ? ` style="fill:${tinta ? COL[m] : '#55554f'}"` : ' class="v"'}>${acc}</rect>`)
   })
   x = 5 * 5.5 + 8
   if (k >= 0) {
@@ -467,7 +483,7 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
     x += 44; t(p.effort, 'mu')
   } }
   // Tokens of the current job per model; nothing while the job has used none yet.
-  if (lavora && vivoTok > 0) { sep(); t(nomeModello(mod || d.chat).split(' ')[0], '', tinta ? colMod(mod || d.chat) : undefined); sp(4); t(`${kt(vivoTok)} ${tr('token')}`) }
+  if (lavora && vivoTok > 0) { sep(); t(nomeModello(mod || d.chat).split(' ')[0], '', tinta ? colMod(mod || d.chat) : undefined); sp(4); t(`${kt(conta('vivo', vivoTok))} ${tr('token')}`) }
   else if (d.tokmod && d.tokmod.length > 0) { sep(); d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); t(nomeModello(m).split(' ')[0], '', tinta ? colMod(m) : undefined); sp(4); t(`${kt(n)} ${tr('token')}`) }) }
   else if (d.tok > 0) { sep(); t(`${kt(d.tok)} ${tr('token')}`, 'mu') }
   // Whole session: all tokens so far and how many agents it has used.
@@ -560,7 +576,7 @@ function svgCruscotto(livello: string | null, dir: string, tinta: boolean, lavor
   out.push(`<circle cx="${cx}" cy="${cy}" r="${R + 4}" style="fill:#fafaf7;stroke:#d6d6cf;stroke-width:1.5"/>`)
   M.forEach((m, i) => {
     const [x0, y0] = pt(ang(i / 5) - 0.02, R), [x1, y1] = pt(ang((i + 1) / 5) + 0.02, R)
-    out.push(`<path d="M ${x0} ${y0} A ${R} ${R} 0 0 1 ${x1} ${y1}" style="fill:none;stroke:${tinta ? COL[m] : '#8a8a84'};stroke-width:${i === k ? 6 : 3};opacity:${i === k ? 1 : 0.45}"${i === k && lavora ? ' class="gp"' : ''}/>`)
+    out.push(`<path d="M ${x0} ${y0} A ${R} ${R} 0 0 1 ${x1} ${y1}" style="fill:none;stroke:${tinta ? COL[m] : '#8a8a84'};stroke-width:${i === k ? 6 : 3};opacity:${i === k ? 1 : 0.45}"${i === k && lavora ? ' class="gp"' : ''}>${ACC ? `<animate attributeName="stroke-opacity" values="0;0;1" keyTimes="0;${(i / 6).toFixed(2)};1" dur="${(0.25 + i * 0.18).toFixed(2)}s" fill="freeze"/>` : ''}</path>`)
   })
   for (let j = 0; j <= 20; j++) {
     const big = j % 4 === 0, a = ang(j / 20)
@@ -573,7 +589,9 @@ function svgCruscotto(livello: string | null, dir: string, tinta: boolean, lavor
   const ei = Math.max(0, ['low', 'medium', 'high', 'max'].indexOf(impegno))
   const f = k >= 0 ? (k * 4 + ei + 0.5) / 20 : 0, a = ang(f)
   const [nx, ny] = pt(a, R - 10), [bx, by] = pt(a + Math.PI, 8)
-  const vib = '' // needle still: it shows gear and effort, not motion
+  // ignition: the needle sweeps to the end of the scale and comes back to its place (rotation in screen degrees)
+  const gf = 210 - 240 * f
+  const vib = ACC ? `<animateTransform attributeName="transform" type="rotate" values="${(gf - 210).toFixed(1)} ${cx} ${cy};${(gf + 30).toFixed(1)} ${cx} ${cy};0 ${cx} ${cy}" keyTimes="0;0.55;1" dur="1.2s" fill="freeze"/>` : ''
   out.push(`<line x1="${bx}" y1="${by}" x2="${nx}" y2="${ny}" style="stroke:#c0392b;stroke-width:2.2;stroke-linecap:round">${vib}</line>`)
   out.push(`<circle cx="${cx}" cy="${cy}" r="5" style="fill:#3a3a36"/>`)
   const nome = k >= 0 ? M[k].toUpperCase() : tr('ferma')
@@ -698,6 +716,7 @@ let fase = '' // what the model streams now: pensa or scrive (main chat)
 let carLetto = 0 // value of car when the transcript was last read
 let car = 0 // real tokens of this turn, from the usage the model sends at the end of every step
 let inizioTurno = '' // start of the current turn, for the live view
+let veloce: { cancel: () => void } | undefined // 100 ms tick while a number counts
 let fermaTic: { cancel: () => void } | undefined // stops the 1 s timer
 
 // At most one run every 15 s: a long transcript takes a couple of seconds to read.
@@ -770,6 +789,13 @@ export const register: Register = (on, options) => {
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     LG = (await read($, lingua).catch(() => 'it')) || 'it'
+    ADESSO = await $.clock.now().catch(() => 0)
+    ACC = Boolean(inizioTurno) && ADESSO - new Date(inizioTurno).getTime() < 1000
+    if (contando && !veloce) {
+      veloce = $.clock.every(100, () => { void update($, tic, n => n + 1).catch(() => undefined) })
+      $.clock.after(1200, () => { veloce?.cancel(); veloce = undefined })
+    }
+    contando = false
     void aggiorna($, below, compact).catch(() => undefined) // numbers stayed old when turn.complete did not reach the mod; at most every 15 s
     await read($, tic).catch(() => 0) // reading it redraws the band at every tick
     const sotto = await next(e).catch(() => undefined)
@@ -882,11 +908,11 @@ export const register: Register = (on, options) => {
     const lav0 = (Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0) && inizio > 0 && oraJ > 0
     const extra = Math.max(0, car - carLetto) // tokens counted live since the last read of the transcript
     const tokJob = d.tok + (lav0 ? extra : 0)
-    const parti = [`${tr('lavoro attivo da')} ${lav0 ? dur(Math.round((oraJ - inizio) / 1000)) : dur(d.el)}`, `${kt(tokJob)} ${tr('token')}`, `${tr('chat')} ${kt(Math.max(0, tokJob - tokAg))}`, `${tr('agenti')} ${kt(tokAg)}`]
+    const parti = [`${tr('lavoro attivo da')} ${lav0 ? dur(Math.round((oraJ - inizio) / 1000)) : dur(d.el)}`, `${kt(conta('job', tokJob))} ${tr('token')}`, `${tr('chat')} ${kt(Math.max(0, tokJob - tokAg))}`, `${tr('agenti')} ${kt(tokAg)}`]
     if (d.tot > 0) parti.push(`${tr('passi')} ${d.fatti} ${tr('di')} ${d.tot}`)
     const r1 = parti.slice(0, 2).join(' · ') + '\n' + parti.slice(2).join(' · ')
     // Whole session, and the cost estimate (same tokens all in Opus as the reference).
-    const r3 = [`${tr(v === 'wf' ? 'workflow' : v === 'live' ? 'live' : 'chat')}${d.sel ? ' ' + tr('attiva') + ' ' + dur(d.sel) : ''}`, d.sag ? `${d.sag} ${tr('agenti')}` : ''].filter(Boolean).join(' · ') + (d.stok ? `\n${kt(d.stok + extra)} ${tr('token')}` : '')
+    const r3 = [`${tr(v === 'wf' ? 'workflow' : v === 'live' ? 'live' : 'chat')}${d.sel ? ' ' + tr('attiva') + ' ' + dur(d.sel) : ''}`, d.sag ? `${d.sag} ${tr('agenti')}` : ''].filter(Boolean).join(' · ') + (d.stok ? `\n${kt(conta('tot', d.stok + extra))} ${tr('token')}` : '')
     // Saving in tokens, not money: tokens the agents did on models lower than Opus, and their share of the session.
     const bassi = ['light', 'medium', 'high'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0), 0)
     const r4 = bassi > 0 ? `${tr('risparmio')} ${kt(bassi)} ${tr('token')} ${tr('su modelli sotto Opus')}${d.stok ? ` (${bassi / d.stok < 0.001 ? tr('meno dello 0,1') : (bassi / d.stok * 100).toFixed(1).replace('.', ',')}%)` : ''}` : ''
