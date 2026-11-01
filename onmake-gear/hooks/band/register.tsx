@@ -7,7 +7,7 @@ import type { Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.42'
+const VERSIONE = '0.6.43'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -411,7 +411,9 @@ export const register: Register = (on, options) => {
     const r1 = parti.join(' · ')
     // Whole session, and the cost estimate (same tokens all in Opus as the reference).
     const r3 = [d.sel ? `sessione attiva da ${dur(d.sel)}` : 'sessione', d.stok ? `${kt(d.stok)} token` : '', d.sag ? `${d.sag} agenti` : '', d.cr ? `cache riletta ${kt(d.cr)} token` : ''].filter(Boolean).join(' · ')
-    const r4 = d.opus > 0 ? `spesa stimata ${d.reale.toFixed(2)} $ · tutto in Opus ${d.opus.toFixed(2)} $${d.risp !== null && d.risp !== undefined ? ` · risparmio ${Math.round(d.risp * 100)}%` : ''}` : ''
+    // Saving in tokens, not money: tokens the agents did on models lower than Opus, and their share of the session.
+    const bassi = ['light', 'medium', 'high'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0), 0)
+    const r4 = bassi > 0 ? `risparmio: ${kt(bassi)} token fatti da modelli più bassi di Opus${d.stok ? ` (${(bassi / d.stok * 100).toFixed(1).replace('.', ',')}% della sessione)` : ''}` : ''
     const r2 = d.righe.length === 0 && d.interrotti === 0 ? 'Nessun agente: lavora solo la chat.' : ''
     const icona: Record<string, string> = { lavora: '▶', fermo: '⏸', completato: '✓' }
 
