@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.71'
+const VERSIONE = '0.6.72'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -40,6 +40,7 @@ async function ricarica($: EngineInterface) {
   const r = await $.process.run(['python3', script, '--cartella', await $.session.cwd(), '--sessione', await $.session.id(), '--json', ...(da ? ['--da', da] : [])])
   if (r.exitCode !== 0) return undefined
   const d = JSON.parse(r.stdout) as Dati
+  carLetto = car
   await update($, dati, () => d)
   return d
 }
@@ -371,6 +372,7 @@ async function apriChiudi($: EngineInterface) {
 
 let last = 0
 let fase = '' // what the model streams now: pensa or scrive (main chat)
+let carLetto = 0 // value of car when the transcript was last read
 let car = 0 // real tokens of this turn, from the usage the model sends at the end of every step
 let inizioTurno = '' // start of the current turn, for the live view
 let fermaTic: { cancel: () => void } | undefined // stops the 1 s timer
@@ -378,7 +380,7 @@ let fermaTic: { cancel: () => void } | undefined // stops the 1 s timer
 // At most one run every 15 s: a long transcript takes a couple of seconds to read.
 async function aggiorna($: EngineInterface, below: boolean, compact: boolean) {
   const now = await $.clock.now()
-  if (now - last < 15000) return
+  if (now - last < 8000) return
   last = now
   const d = await ricarica($).catch(() => undefined)
   if (!d) last = 0 // a failed read retries at the next turn instead of keeping old numbers
@@ -417,7 +419,7 @@ export const register: Register = (on, options) => {
       fermaTic?.cancel()
       fermaTic = $.clock.every(1000, () => { void update($, tic, n => n + 1).catch(() => undefined) })
     }
-    if (e.agentId === undefined) { void update($, storia, () => []).catch(() => undefined); fase = ''; car = 0 }
+    if (e.agentId === undefined) { void update($, storia, () => []).catch(() => undefined); fase = ''; car = 0; carLetto = 0 }
     if (e.agentId === undefined) { turnoId = e.turnId; void $.clock.now().then(t => { inizioTurno = new Date(t).toISOString() }) }
     return next(e)
   })
@@ -549,13 +551,18 @@ export const register: Register = (on, options) => {
     // Facts of the current job (since your last message): time active, tokens split chat/agents, steps.
     const tokAg = d.righe.reduce((a, r) => a + (r.tok || 0), 0)
     const oraJ = await $.clock.now().catch(() => 0)
-    const lav0 = Boolean((e.props as { isWorking?: boolean }).isWorking) && inizioTurno && oraJ
-    const tokJob = lav0 ? Math.max(d.tok, car) : d.tok
-    const parti = [`lavoro attivo da ${lav0 ? dur(Math.round((oraJ - new Date(inizioTurno).getTime()) / 1000)) : dur(d.el)}`, `${kt(tokJob)} token`, `chat ${kt(Math.max(0, tokJob - tokAg))}`, `agenti ${kt(tokAg)}`]
+    // start of this turn: from turn.start, or (after a reload of the mod) from the oldest action seen in this turn
+    const at0 = (await read($, attivo).catch(() => null))?.t0 ?? 0
+    const h0 = ((await read($, storia).catch(() => [])) as Attivo[]).reduce((m, a) => (a.t0 && (!m || a.t0 < m) ? a.t0 : m), 0)
+    const inizio = inizioTurno ? new Date(inizioTurno).getTime() : h0 || at0
+    const lav0 = (Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0) && inizio > 0 && oraJ > 0
+    const extra = Math.max(0, car - carLetto) // tokens counted live since the last read of the transcript
+    const tokJob = d.tok + (lav0 ? extra : 0)
+    const parti = [`lavoro attivo da ${lav0 ? dur(Math.round((oraJ - inizio) / 1000)) : dur(d.el)}`, `${kt(tokJob)} token`, `chat ${kt(Math.max(0, tokJob - tokAg))}`, `agenti ${kt(tokAg)}`]
     if (d.tot > 0) parti.push(`passi ${d.fatti} di ${d.tot}`)
     const r1 = parti.slice(0, 2).join(' · ') + '\n' + parti.slice(2).join(' · ')
     // Whole session, and the cost estimate (same tokens all in Opus as the reference).
-    const r3 = [`${v === 'wf' ? 'workflow' : v === 'live' ? 'live' : 'chat'}${d.sel ? ' attiva ' + dur(d.sel) : ''}`, d.sag ? `${d.sag} agenti` : ''].filter(Boolean).join(' · ') + (d.stok ? `\n${kt(d.stok)} token` : '')
+    const r3 = [`${v === 'wf' ? 'workflow' : v === 'live' ? 'live' : 'chat'}${d.sel ? ' attiva ' + dur(d.sel) : ''}`, d.sag ? `${d.sag} agenti` : ''].filter(Boolean).join(' · ') + (d.stok ? `\n${kt(d.stok + extra)} token` : '')
     // Saving in tokens, not money: tokens the agents did on models lower than Opus, and their share of the session.
     const bassi = ['light', 'medium', 'high'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0), 0)
     const r4 = bassi > 0 ? `risparmio ${kt(bassi)} token su modelli sotto Opus${d.stok ? ` (${bassi / d.stok < 0.001 ? 'meno dello 0,1' : (bassi / d.stok * 100).toFixed(1).replace('.', ',')}%)` : ''}` : ''
