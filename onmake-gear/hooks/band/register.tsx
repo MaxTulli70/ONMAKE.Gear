@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.78'
+const VERSIONE = '0.6.79'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -55,7 +55,7 @@ const lev = (d: Dati) => `⚙ ${d.livello ? d.livello.toUpperCase() : '-'}${d.di
 
 // Plain text for the status line (position below); the bar above draws the same parts in color.
 function riga(d: Dati, compact: boolean) {
-  const parts = [lev(d), `${kt(d.tok)} token`]
+  const parts = [lev(d), `${kt(d.tok)} ${tr('token')}`]
   if (!compact) parts.push(ag(d), pct(d), dur(d.el) + (d.eta ? `/${dur(d.el + d.eta)}` : ''))
   return parts.filter(x => x !== '').join(' · ')
 }
@@ -80,6 +80,311 @@ function indiceOtt(d: Dati) {
 
 const ANIM = '<style>@keyframes gs{0%{transform:translateX(-14px)}100%{transform:translateX(44px)}}.gs{animation:gs 1.1s linear infinite}@keyframes gp{50%{opacity:.3}}.gp{animation:gp 1s ease-in-out infinite}</style>'
 
+const TR: Record<string, Record<string, string>> = {
+  en: {
+    'nessuna marcia': 'no gear',
+    'pronto': 'ready',
+    'pensa…': 'thinking…',
+    'chat': 'chat',
+    'indice': 'index',
+    '↑ salita': '↑ up',
+    '↓ scesa': '↓ down',
+    'lavora su un server': 'works on a server',
+    'sincronizza con GitHub': 'syncs with GitHub',
+    'usa git': 'uses git',
+    'esegue le prove': 'runs the tests',
+    'compila': 'builds',
+    'installa pacchetti': 'installs packages',
+    'scarica o chiama un indirizzo web': 'fetches or calls a web address',
+    'cerca file': 'searches files',
+    'legge file': 'reads files',
+    'esegue uno script Python': 'runs a Python script',
+    'aggiorna i plugin': 'updates plugins',
+    'gestisce un servizio': 'manages a service',
+    'legge': 'reads',
+    'modifica': 'edits',
+    'scrive': 'writes',
+    'cerca nel codice': 'searches the code',
+    'legge una pagina web': 'reads a web page',
+    'cerca sul web': 'searches the web',
+    'avvia un agente': 'starts an agent',
+    'aggiorna i passi': 'updates the steps',
+    'esegue un comando': 'runs a command',
+    'usa ': 'uses ',
+    'agente: ': 'agent: ',
+    'live': 'live',
+    'workflow': 'workflow',
+    'workflow da': 'workflow from',
+    'totale chat': 'chat total',
+    '↺ nuovo workflow': '↺ new workflow',
+    'azzerare il workflow da adesso?': 'reset the workflow from now?',
+    'OK': 'OK',
+    'annulla': 'cancel',
+    '? guida': '? guide',
+    '× guida': '× guide',
+    'lavoro attivo da': 'working for',
+    'token': 'tokens',
+    'agenti': 'agents',
+    'passi': 'steps',
+    'di': 'of',
+    'Nessun agente: lavora solo la chat.': 'No agents: only the chat is working.',
+    'attiva': 'active',
+    'indice ottimizzazione': 'optimization index',
+    'risparmio': 'saved',
+    'sotto Opus': 'below Opus',
+    'su modelli sotto Opus': 'on models below Opus',
+    'meno dello 0,1': 'less than 0.1',
+    '<0,1': '<0.1',
+    'chi ha usato i token': 'who used the tokens',
+    'modello': 'model',
+    'token/min': 'tokens/min',
+    'ferma': 'stopped',
+    'in corso da': 'running for',
+    'agenti al lavoro': 'agents working',
+    'fermo da': 'idle for',
+    'restano ~': 'left ~',
+    'passi)': 'steps)',
+    'scrive…': 'writing…',
+    'pensa': 'thinking',
+    'Gear: sessioni non lette': 'Gear: sessions not read',
+    'Gear: scrivi un comando': 'Gear: type a command',
+    'Gear: fermata': 'Gear: stopped',
+    'Gear: annullato': 'Gear: cancelled',
+    'Gear: inviato': 'Gear: sent',
+    'Gear: non riuscito': 'Gear: failed',
+    'Gear: sito non aperto': 'Gear: site not opened',
+    'Gear: pannello non aperto': 'Gear: panel not opened',
+    'Gear: workflow azzerato da adesso': 'Gear: workflow reset from now',
+  },
+  de: {
+    'nessuna marcia': 'kein Gang',
+    'pronto': 'bereit',
+    'pensa…': 'denkt…',
+    'chat': 'Chat',
+    'indice': 'Index',
+    '↑ salita': '↑ hoch',
+    '↓ scesa': '↓ runter',
+    'lavora su un server': 'arbeitet auf einem Server',
+    'sincronizza con GitHub': 'synchronisiert mit GitHub',
+    'usa git': 'nutzt git',
+    'esegue le prove': 'führt die Tests aus',
+    'compila': 'baut',
+    'installa pacchetti': 'installiert Pakete',
+    'scarica o chiama un indirizzo web': 'ruft eine Webadresse ab',
+    'cerca file': 'sucht Dateien',
+    'legge file': 'liest Dateien',
+    'esegue uno script Python': 'führt ein Python-Skript aus',
+    'aggiorna i plugin': 'aktualisiert Plugins',
+    'gestisce un servizio': 'verwaltet einen Dienst',
+    'legge': 'liest',
+    'modifica': 'ändert',
+    'scrive': 'schreibt',
+    'cerca nel codice': 'sucht im Code',
+    'legge una pagina web': 'liest eine Webseite',
+    'cerca sul web': 'sucht im Web',
+    'avvia un agente': 'startet einen Agenten',
+    'aggiorna i passi': 'aktualisiert die Schritte',
+    'esegue un comando': 'führt einen Befehl aus',
+    'usa ': 'nutzt ',
+    'agente: ': 'Agent: ',
+    'live': 'live',
+    'workflow': 'Workflow',
+    'workflow da': 'Workflow ab',
+    'totale chat': 'Chat gesamt',
+    '↺ nuovo workflow': '↺ neuer Workflow',
+    'azzerare il workflow da adesso?': 'Workflow ab jetzt zurücksetzen?',
+    'OK': 'OK',
+    'annulla': 'abbrechen',
+    '? guida': '? Hilfe',
+    '× guida': '× Hilfe',
+    'lavoro attivo da': 'arbeitet seit',
+    'token': 'Tokens',
+    'agenti': 'Agenten',
+    'passi': 'Schritte',
+    'di': 'von',
+    'Nessun agente: lavora solo la chat.': 'Keine Agenten: nur der Chat arbeitet.',
+    'attiva': 'aktiv',
+    'indice ottimizzazione': 'Optimierungsindex',
+    'risparmio': 'gespart',
+    'sotto Opus': 'unter Opus',
+    'su modelli sotto Opus': 'mit Modellen unter Opus',
+    'meno dello 0,1': 'weniger als 0,1',
+    '<0,1': '<0,1',
+    'chi ha usato i token': 'wer die Tokens verbraucht hat',
+    'modello': 'Modell',
+    'token/min': 'Tokens/Min',
+    'ferma': 'steht',
+    'in corso da': 'läuft seit',
+    'agenti al lavoro': 'Agenten arbeiten',
+    'fermo da': 'steht seit',
+    'restano ~': 'noch ~',
+    'passi)': 'Schritte)',
+    'scrive…': 'schreibt…',
+    'pensa': 'denkt',
+    'Gear: sessioni non lette': 'Gear: Sitzungen nicht gelesen',
+    'Gear: scrivi un comando': 'Gear: Befehl eingeben',
+    'Gear: fermata': 'Gear: gestoppt',
+    'Gear: annullato': 'Gear: abgebrochen',
+    'Gear: inviato': 'Gear: gesendet',
+    'Gear: non riuscito': 'Gear: fehlgeschlagen',
+    'Gear: sito non aperto': 'Gear: Seite nicht geöffnet',
+    'Gear: pannello non aperto': 'Gear: Panel nicht geöffnet',
+    'Gear: workflow azzerato da adesso': 'Gear: Workflow ab jetzt zurückgesetzt',
+  },
+  fr: {
+    'nessuna marcia': 'pas de vitesse',
+    'pronto': 'prêt',
+    'pensa…': 'réfléchit…',
+    'chat': 'chat',
+    'indice': 'indice',
+    '↑ salita': '↑ montée',
+    '↓ scesa': '↓ descente',
+    'lavora su un server': 'travaille sur un serveur',
+    'sincronizza con GitHub': 'synchronise avec GitHub',
+    'usa git': 'utilise git',
+    'esegue le prove': 'lance les tests',
+    'compila': 'compile',
+    'installa pacchetti': 'installe des paquets',
+    'scarica o chiama un indirizzo web': 'appelle une adresse web',
+    'cerca file': 'cherche des fichiers',
+    'legge file': 'lit des fichiers',
+    'esegue uno script Python': 'lance un script Python',
+    'aggiorna i plugin': 'met à jour les plugins',
+    'gestisce un servizio': 'gère un service',
+    'legge': 'lit',
+    'modifica': 'modifie',
+    'scrive': 'écrit',
+    'cerca nel codice': 'cherche dans le code',
+    'legge una pagina web': 'lit une page web',
+    'cerca sul web': 'cherche sur le web',
+    'avvia un agente': 'lance un agent',
+    'aggiorna i passi': 'met à jour les étapes',
+    'esegue un comando': 'exécute une commande',
+    'usa ': 'utilise ',
+    'agente: ': 'agent : ',
+    'live': 'live',
+    'workflow': 'workflow',
+    'workflow da': 'workflow depuis',
+    'totale chat': 'total chat',
+    '↺ nuovo workflow': '↺ nouveau workflow',
+    'azzerare il workflow da adesso?': 'réinitialiser le workflow dès maintenant ?',
+    'OK': 'OK',
+    'annulla': 'annuler',
+    '? guida': '? guide',
+    '× guida': '× guide',
+    'lavoro attivo da': 'au travail depuis',
+    'token': 'tokens',
+    'agenti': 'agents',
+    'passi': 'étapes',
+    'di': 'sur',
+    'Nessun agente: lavora solo la chat.': 'Aucun agent : seul le chat travaille.',
+    'attiva': 'actif',
+    'indice ottimizzazione': 'indice d\'optimisation',
+    'risparmio': 'économie',
+    'sotto Opus': 'sous Opus',
+    'su modelli sotto Opus': 'sur des modèles sous Opus',
+    'meno dello 0,1': 'moins de 0,1',
+    '<0,1': '<0,1',
+    'chi ha usato i token': 'qui a utilisé les tokens',
+    'modello': 'modèle',
+    'token/min': 'tokens/min',
+    'ferma': 'arrêt',
+    'in corso da': 'en cours depuis',
+    'agenti al lavoro': 'agents au travail',
+    'fermo da': 'arrêté depuis',
+    'restano ~': 'reste ~',
+    'passi)': 'étapes)',
+    'scrive…': 'écrit…',
+    'pensa': 'réfléchit',
+    'Gear: sessioni non lette': 'Gear: sessions non lues',
+    'Gear: scrivi un comando': 'Gear: écris une commande',
+    'Gear: fermata': 'Gear: arrêté',
+    'Gear: annullato': 'Gear: annulé',
+    'Gear: inviato': 'Gear: envoyé',
+    'Gear: non riuscito': 'Gear: échec',
+    'Gear: sito non aperto': 'Gear: site non ouvert',
+    'Gear: pannello non aperto': 'Gear: panneau non ouvert',
+    'Gear: workflow azzerato da adesso': 'Gear: workflow réinitialisé dès maintenant',
+  },
+  es: {
+    'nessuna marcia': 'sin marcha',
+    'pronto': 'listo',
+    'pensa…': 'piensa…',
+    'chat': 'chat',
+    'indice': 'índice',
+    '↑ salita': '↑ sube',
+    '↓ scesa': '↓ baja',
+    'lavora su un server': 'trabaja en un servidor',
+    'sincronizza con GitHub': 'sincroniza con GitHub',
+    'usa git': 'usa git',
+    'esegue le prove': 'ejecuta las pruebas',
+    'compila': 'compila',
+    'installa pacchetti': 'instala paquetes',
+    'scarica o chiama un indirizzo web': 'llama a una dirección web',
+    'cerca file': 'busca archivos',
+    'legge file': 'lee archivos',
+    'esegue uno script Python': 'ejecuta un script Python',
+    'aggiorna i plugin': 'actualiza los plugins',
+    'gestisce un servizio': 'gestiona un servicio',
+    'legge': 'lee',
+    'modifica': 'modifica',
+    'scrive': 'escribe',
+    'cerca nel codice': 'busca en el código',
+    'legge una pagina web': 'lee una página web',
+    'cerca sul web': 'busca en la web',
+    'avvia un agente': 'inicia un agente',
+    'aggiorna i passi': 'actualiza los pasos',
+    'esegue un comando': 'ejecuta un comando',
+    'usa ': 'usa ',
+    'agente: ': 'agente: ',
+    'live': 'live',
+    'workflow': 'workflow',
+    'workflow da': 'workflow desde',
+    'totale chat': 'total chat',
+    '↺ nuovo workflow': '↺ nuevo workflow',
+    'azzerare il workflow da adesso?': '¿reiniciar el workflow desde ahora?',
+    'OK': 'OK',
+    'annulla': 'cancelar',
+    '? guida': '? guía',
+    '× guida': '× guía',
+    'lavoro attivo da': 'trabajando desde',
+    'token': 'tokens',
+    'agenti': 'agentes',
+    'passi': 'pasos',
+    'di': 'de',
+    'Nessun agente: lavora solo la chat.': 'Ningún agente: trabaja solo el chat.',
+    'attiva': 'activo',
+    'indice ottimizzazione': 'índice de optimización',
+    'risparmio': 'ahorro',
+    'sotto Opus': 'bajo Opus',
+    'su modelli sotto Opus': 'en modelos bajo Opus',
+    'meno dello 0,1': 'menos de 0,1',
+    '<0,1': '<0,1',
+    'chi ha usato i token': 'quién usó los tokens',
+    'modello': 'modelo',
+    'token/min': 'tokens/min',
+    'ferma': 'parado',
+    'in corso da': 'en curso desde',
+    'agenti al lavoro': 'agentes trabajando',
+    'fermo da': 'parado desde',
+    'restano ~': 'quedan ~',
+    'passi)': 'pasos)',
+    'scrive…': 'escribe…',
+    'pensa': 'piensa',
+    'Gear: sessioni non lette': 'Gear: sesiones no leídas',
+    'Gear: scrivi un comando': 'Gear: escribe un comando',
+    'Gear: fermata': 'Gear: detenido',
+    'Gear: annullato': 'Gear: cancelado',
+    'Gear: inviato': 'Gear: enviado',
+    'Gear: non riuscito': 'Gear: fallo',
+    'Gear: sito non aperto': 'Gear: sitio no abierto',
+    'Gear: pannello non aperto': 'Gear: panel no abierto',
+    'Gear: workflow azzerato da adesso': 'Gear: workflow reiniciado desde ahora',
+  },
+}
+let LG = 'it'
+const tr = (s: string) => TR[LG]?.[s] ?? s
+
 // Plain words for what a tool is doing, instead of the raw command.
 const SPIEGA: [RegExp, string][] = [
   [/^(ssh|scp|rsync)\b/, 'lavora su un server'], [/^git (push|pull|fetch)/, 'sincronizza con GitHub'], [/^git /, 'usa git'],
@@ -91,10 +396,10 @@ const SPIEGA: [RegExp, string][] = [
 const STRUMENTI: Record<string, string> = { Read: 'legge', Edit: 'modifica', Write: 'scrive', Grep: 'cerca nel codice', Glob: 'cerca file', WebFetch: 'legge una pagina web', WebSearch: 'cerca sul web', Agent: 'avvia un agente', TodoWrite: 'aggiorna i passi' }
 function spiega(ora: Attivo) {
   const base = ora.tool.replace(/^agente: /, '')
-  const chi = ora.tool.startsWith('agente: ') ? 'agente: ' : ''
-  if (base === 'Bash') { const m = SPIEGA.find(([re]) => re.test(ora.cosa.trim())); return { cosa: chi + (m ? m[1] : 'esegue un comando'), dove: '' } }
-  if (base.startsWith('mcp__')) return { cosa: chi + 'usa ' + base.split('__')[1], dove: '' }
-  return { cosa: chi + (STRUMENTI[base] ?? base), dove: ora.cosa }
+  const chi = ora.tool.startsWith('agente: ') ? tr('agente: ') : ''
+  if (base === 'Bash') { const m = SPIEGA.find(([re]) => re.test(ora.cosa.trim())); return { cosa: chi + (m ? tr(m[1]) : tr('esegue un comando')), dove: '' } }
+  if (base.startsWith('mcp__')) return { cosa: chi + tr('usa ') + base.split('__')[1], dove: '' }
+  return { cosa: chi + (STRUMENTI[base] ? tr(STRUMENTI[base]) : base), dove: ora.cosa }
 }
 
 // Short guide shown by the '? guida' button.
@@ -136,8 +441,8 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
     const nome = d.livello!.toUpperCase()
     out.push(`<text x="${x}" y="${Y}" class="sm"${tinta ? ` style="fill:${COL[d.livello!]}"` : ''}>${esc(nome)}</text>`)
     x += Math.ceil(largo(nome) * 0.85); sp(4)
-    if (d.dir === '▲' || d.dir === '▼') { t(d.dir === '▲' ? '↑ salita' : '↓ scesa', 'sm', tinta ? (d.dir === '▲' ? COL.high : COL.medium) : undefined); sp(2) }
-  } else t('nessuna marcia', 'mu')
+    if (d.dir === '▲' || d.dir === '▼') { t(d.dir === '▲' ? tr('↑ salita') : tr('↓ scesa'), 'sm', tinta ? (d.dir === '▲' ? COL.high : COL.medium) : undefined); sp(2) }
+  } else t(tr('nessuna marcia'), 'mu')
   // Live: what is running right now (tool and its target) and for how long; 'pronto' when idle.
   sep()
   if (lavora && ora) {
@@ -146,14 +451,14 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
     const sec = adesso && ora.t0 ? Math.max(0, Math.round((adesso - ora.t0) / 1000)) : 0
     if (sec) { sp(5); t(dur(sec), 'mu') }
   } else if (lavora) {
-    t('pensa…', 'mu')
+    t(tr('pensa…'), 'mu')
     const s0 = adesso && inizioTurno ? Math.max(0, Math.round((adesso - Date.parse(inizioTurno)) / 1000)) : 0
     if (s0) { sp(5); t(dur(s0), 'mu') }
-  } else t('pronto', 'mu')
+  } else t(tr('pronto'), 'mu')
   // The model the chat is using now, e.g. 'opus-5-5' -> 'Opus 5.5'.
   // Model and effort the chat is using now, then the tokens of the current job per model.
   const mod = p?.model || d.chat
-  if (mod) { sep(); t('chat', 'mu'); sp(5); t(nomeModello(mod), '', tinta ? colMod(mod, p?.effort) : undefined); if (p?.effort) {
+  if (mod) { sep(); t(tr('chat'), 'mu'); sp(5); t(nomeModello(mod), '', tinta ? colMod(mod, p?.effort) : undefined); if (p?.effort) {
     // Effort meter: 4 steps low, medium, high, max; while working a light band runs across it.
     sp(6)
     const liv = Math.max(1, ['low', 'medium', 'high', 'max'].indexOf(p.effort) + 1)
@@ -163,30 +468,30 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
     x += 44; t(p.effort, 'mu')
   } }
   // Tokens of the current job per model; nothing while the job has used none yet.
-  if (lavora && vivoTok > 0) { sep(); t(nomeModello(mod || d.chat).split(' ')[0], '', tinta ? colMod(mod || d.chat) : undefined); sp(4); t(`${kt(vivoTok)} token`) }
-  else if (d.tokmod && d.tokmod.length > 0) { sep(); d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); t(nomeModello(m).split(' ')[0], '', tinta ? colMod(m) : undefined); sp(4); t(`${kt(n)} token`) }) }
-  else if (d.tok > 0) { sep(); t(`${kt(d.tok)} token`, 'mu') }
+  if (lavora && vivoTok > 0) { sep(); t(nomeModello(mod || d.chat).split(' ')[0], '', tinta ? colMod(mod || d.chat) : undefined); sp(4); t(`${kt(vivoTok)} ${tr('token')}`) }
+  else if (d.tokmod && d.tokmod.length > 0) { sep(); d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); t(nomeModello(m).split(' ')[0], '', tinta ? colMod(m) : undefined); sp(4); t(`${kt(n)} ${tr('token')}`) }) }
+  else if (d.tok > 0) { sep(); t(`${kt(d.tok)} ${tr('token')}`, 'mu') }
   // Whole session: all tokens so far and how many agents it has used.
   const io = indiceOtt(d)
-  if (io !== null) { sep(); t('indice', 'mu'); sp(4); t(`${io}/100`, '', tinta ? (io >= 50 ? COL.medium : io >= 20 ? COL.high : '#c0714f') : undefined) }
+  if (io !== null) { sep(); t(tr('indice'), 'mu'); sp(4); t(`${io}/100`, '', tinta ? (io >= 50 ? COL.medium : io >= 20 ? COL.high : '#c0714f') : undefined) }
   if (!compact) {
     // Only what is useful now: the current job (since your last message); counts at zero and a missing task list are left out.
     const n: [number, string, string | undefined][] = [[d.lavorano, '▶', COL.medium], [d.fermi, '⏸', COL.high], [d.completi, '✓', undefined], [d.interrotti, '✗', undefined]]
     const vivi = n.filter(([k]) => k > 0)
     const tokAg = d.righe.reduce((a, r) => a + (r.tok || 0), 0)
     if (vivi.length > 0 || tokAg > 0) {
-      sep(); t('agenti', 'mu'); sp(5)
+      sep(); t(tr('agenti'), 'mu'); sp(5)
       vivi.forEach(([k, g, col], i) => { if (i) sp(6); t(`${g} ${k}`, col ? '' : 'mu', tinta ? col : undefined) })
-      if (tokAg > 0) { sp(8); t(`${kt(tokAg)} token`) }
+      if (tokAg > 0) { sp(8); t(`${kt(tokAg)} ${tr('token')}`) }
     }
     // Who is working now and on what: the working agent and its task, else the main chat and the current step or your last request.
     const a0 = d.attivi[0]
     if (a0 || d.compito) sep()
     if (a0) t(`▶ ${a0.nome}: ${a0.desc.slice(0, 40)}`, '', tinta ? COL[a0.liv] ?? GRIGIO : undefined)
-    else if (d.compito) t(`chat: ${d.compito.slice(0, 48)}`)
-    if (d.perc !== null) { sep(); celle(d.perc, COL.medium); t(`${Math.round(d.perc * 100)}% (${d.fatti}/${d.tot} passi)`) }
+    else if (d.compito) t(`${tr('chat')}: ${d.compito.slice(0, 48)}`)
+    if (d.perc !== null) { sep(); celle(d.perc, COL.medium); t(`${Math.round(d.perc * 100)}% (${d.fatti}/${d.tot} ${tr('passi')})`) }
     // Time only as an estimate of what is left, when a task list allows one; a bare timer told nothing.
-    if (d.eta !== null) { sep(); t(`restano ~${dur(d.eta)}`, '', tinta ? COL.high : undefined) }
+    if (d.eta !== null) { sep(); t(`${tr('restano ~')}${dur(d.eta)}`, '', tinta ? COL.high : undefined) }
   }
   const w = Math.ceil(x + 2)
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${H}" viewBox="0 0 ${w} ${H}">${STILE}${out.join('')}</svg>`, width: w }
@@ -208,9 +513,9 @@ function svgAgente(x: { stato: string; liv: string; nome: string; dir: string; m
   const col = x.stato === 'fermo' ? COL.high : COL[x.liv] ?? GRIGIO
   t(`${ic} ${x.nome}${x.dir === '▲' || x.dir === '▼' ? ' ' + x.dir : ''}`, x.stato === 'completato' ? 'mu' : '', tinta && x.stato !== 'completato' ? col : undefined)
   px += 10
-  if (x.stato === 'fermo') { t(`fermo da ${dur(x.ago)}`, '', tinta ? COL.high : undefined); px += 10 }
+  if (x.stato === 'fermo') { t(`${tr('fermo da')} ${dur(x.ago)}`, '', tinta ? COL.high : undefined); px += 10 }
   t(nomeModello(x.model), 'mu'); px += 10
-  t(`${kt(x.tok)} token`, 'mu'); px += 10
+  t(`${kt(x.tok)} ${tr('token')}`, 'mu'); px += 10
   t(x.desc, x.stato === 'completato' ? 'mu' : '')
   const w = Math.ceil(px + 2)
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="24" viewBox="0 0 ${w} 24">${STILE}${out.join('')}</svg>`, width: w }
@@ -230,7 +535,7 @@ function svgBarra(pl: Record<string, [number, number]>, tot: number, tinta: bool
   const ag = liv.reduce((a, k) => a + (pl[k]?.[1] ?? 0), 0)
   const parti: [string, number, string][] = [['chat', Math.max(0, tot - ag), '#c0714f'], ...liv.map(k => [k.toUpperCase(), pl[k]?.[1] ?? 0, COL[k]] as [string, number, string])]
   let x = 0, lx = 0
-  const out: string[] = [`<text x="0" y="10" class="mu sm">chi ha usato i token</text>`, `<rect x="0" y="16" width="${W}" height="10" rx="3" class="v"/>`]
+  const out: string[] = [`<text x="0" y="10" class="mu sm">${tr('chi ha usato i token')}</text>`, `<rect x="0" y="16" width="${W}" height="10" rx="3" class="v"/>`]
   for (const [nome, n, col] of parti) {
     if (!tot || !n) continue
     const w = Math.max(2, n / tot * W)
@@ -269,8 +574,8 @@ function svgCruscotto(livello: string | null, dir: string, tinta: boolean, lavor
   const vib = lavora ? `<animateTransform attributeName="transform" type="rotate" values="-1.5 ${cx} ${cy};1.5 ${cx} ${cy};-1.5 ${cx} ${cy}" dur="0.4s" repeatCount="indefinite"/>` : ''
   out.push(`<line x1="${bx}" y1="${by}" x2="${nx}" y2="${ny}" style="stroke:#c0392b;stroke-width:2.2;stroke-linecap:round">${vib}</line>`)
   out.push(`<circle cx="${cx}" cy="${cy}" r="5" style="fill:#3a3a36"/>`)
-  out.push(`<text x="${cx}" y="${cy + 22}" text-anchor="middle" style="font-weight:600">${kt(vel)}</text><text x="${cx}" y="${cy + 32}" text-anchor="middle" class="sm mu">token/min</text>`)
-  const nome = k >= 0 ? M[k].toUpperCase() : 'ferma'
+  out.push(`<text x="${cx}" y="${cy + 22}" text-anchor="middle" style="font-weight:600">${kt(vel)}</text><text x="${cx}" y="${cy + 32}" text-anchor="middle" class="sm mu">${tr('token/min')}</text>`)
+  const nome = k >= 0 ? M[k].toUpperCase() : tr('ferma')
   out.push(`<text x="${cx}" y="${cy + 46}" text-anchor="middle" class="sm"${k >= 0 && tinta ? ` style="fill:${COL[M[k]]}"` : ''}>${nome}${impegno ? ' · ' + impegno : ''}${dir === '▲' ? ' ↑' : dir === '▼' ? ' ↓' : ''}</text>`)
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="90" viewBox="0 0 140 132">${STILE}${out.join('')}</svg>`, width: 96 }
 }
@@ -289,7 +594,7 @@ function svgGriglia(pl: Record<string, [number, number]>, tinta: boolean, attual
       + `<text x="170" y="${y}" class="mu" text-anchor="end">${n}</text>`
       + `<text x="254" y="${y}"${n ? '' : ' class="mu"'} text-anchor="end">${kt(tk)}</text>`
   })
-  const testa = `<text x="86" y="10" class="mu sm">modello</text><text x="170" y="10" class="mu sm" text-anchor="end">agenti</text><text x="254" y="10" class="mu sm" text-anchor="end">token</text>`
+  const testa = `<text x="86" y="10" class="mu sm">${tr('modello')}</text><text x="170" y="10" class="mu sm" text-anchor="end">${tr('agenti')}</text><text x="254" y="10" class="mu sm" text-anchor="end">${tr('token')}</text>`
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="258" height="84" viewBox="0 0 258 84">${STILE}${testa}${righe.join('')}</svg>`, width: 258 }
 }
 
@@ -357,7 +662,7 @@ async function caricaSessioni($: EngineInterface) {
     await update($, sessioni, () => l)
     if (l.length > 0 && (await read($, scelta)) === '') await update($, scelta, () => l[0].id)
   } catch (err) {
-    $.ui.toast(`Gear: sessioni non lette (${String(err).slice(0, 60)})`)
+    $.ui.toast(`${tr('Gear: sessioni non lette')} (${String(err).slice(0, 60)})`)
   }
 }
 
@@ -367,18 +672,18 @@ async function azione($: EngineInterface, cosa: 'invia' | 'ferma' | 'riprendi' |
   const msg = cosa === 'riprendi' ? 'continua da dove eri rimasto'
     : cosa === 'annulla' ? 'Lavoro annullato: non continuare il compito di prima, aspetta le mie istruzioni.'
     : (scritto ?? (await read($, comando))).trim()
-  if (cosa === 'invia' && msg === '') return $.ui.toast('Gear: scrivi un comando')
+  if (cosa === 'invia' && msg === '') return $.ui.toast(tr('Gear: scrivi un comando'))
   try {
     if (cosa === 'ferma' || cosa === 'annulla') {
       if (turnoId) await $.turn.abort({ turnId: turnoId }).catch(() => undefined)
       turnoId = undefined
-      if (cosa === 'ferma') return $.ui.toast('Gear: fermata')
+      if (cosa === 'ferma') return $.ui.toast(tr('Gear: fermata'))
     }
     await $.prompt.submit({ text: msg })
-    $.ui.toast(`Gear: ${cosa === 'annulla' ? 'annullato' : 'inviato'}`)
+    $.ui.toast(tr(cosa === 'annulla' ? 'Gear: annullato' : 'Gear: inviato'))
     if (cosa === 'invia') await update($, comando, () => '')
   } catch (err) {
-    $.ui.toast(`Gear: non riuscito (${String(err).slice(0, 80)})`)
+    $.ui.toast(`${tr('Gear: non riuscito')} (${String(err).slice(0, 80)})`)
   }
 }
 
@@ -462,6 +767,7 @@ export const register: Register = (on, options) => {
   }).catch(($, e, next) => next(e))
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    LG = (await read($, lingua).catch(() => 'it')) || 'it'
     void aggiorna($, below, compact).catch(() => undefined) // numbers stayed old when turn.complete did not reach the mod; at most every 15 s
     await read($, tic).catch(() => 0) // reading it redraws the band at every tick
     const sotto = await next(e).catch(() => undefined)
@@ -515,13 +821,13 @@ export const register: Register = (on, options) => {
           <Box position="relative">
             <Svg source={LOGO} alt="ONMAKE" width={32} height={34} />
             <Box position="absolute" top={0} left={0} right={0} bottom={0} justifyContent="center" alignItems="center">
-              <Button key="onmake" plain onPress={() => apriSito($).catch(() => $.ui.toast('Gear: sito non aperto'))}>
+              <Button key="onmake" plain onPress={() => apriSito($).catch(() => $.ui.toast(tr('Gear: sito non aperto')))}>
                 <Text>{'\u2003\u2003'}</Text>
               </Button>
             </Box>
           </Box>
           {tasto('tendina', open ? '↓' : '↑', () => apriChiudi($))}
-          {tasto('pannello', '↗', () => apriPannello($).catch(() => $.ui.toast('Gear: pannello non aperto')))}
+          {tasto('pannello', '↗', () => apriPannello($).catch(() => $.ui.toast(tr('Gear: pannello non aperto'))))}
         </Box>
       </Box>
     )
@@ -552,7 +858,7 @@ export const register: Register = (on, options) => {
           <Button key="tendina" plain onPress={() => apriChiudi($)}>
             <Text dimColor>{open ? 'Chiudi ▴' : 'Dettagli ▾'}</Text>
           </Button>
-          <Button key="pannello" plain onPress={() => apriPannello($).catch(() => $.ui.toast('Gear: pannello non aperto'))}>
+          <Button key="pannello" plain onPress={() => apriPannello($).catch(() => $.ui.toast(tr('Gear: pannello non aperto')))}>
             <Text dimColor>Pannello ↗</Text>
           </Button>
         </Box>
@@ -574,17 +880,17 @@ export const register: Register = (on, options) => {
     const lav0 = (Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0) && inizio > 0 && oraJ > 0
     const extra = Math.max(0, car - carLetto) // tokens counted live since the last read of the transcript
     const tokJob = d.tok + (lav0 ? extra : 0)
-    const parti = [`lavoro attivo da ${lav0 ? dur(Math.round((oraJ - inizio) / 1000)) : dur(d.el)}`, `${kt(tokJob)} token`, `chat ${kt(Math.max(0, tokJob - tokAg))}`, `agenti ${kt(tokAg)}`]
-    if (d.tot > 0) parti.push(`passi ${d.fatti} di ${d.tot}`)
+    const parti = [`${tr('lavoro attivo da')} ${lav0 ? dur(Math.round((oraJ - inizio) / 1000)) : dur(d.el)}`, `${kt(tokJob)} ${tr('token')}`, `${tr('chat')} ${kt(Math.max(0, tokJob - tokAg))}`, `${tr('agenti')} ${kt(tokAg)}`]
+    if (d.tot > 0) parti.push(`${tr('passi')} ${d.fatti} ${tr('di')} ${d.tot}`)
     const r1 = parti.slice(0, 2).join(' · ') + '\n' + parti.slice(2).join(' · ')
     // Whole session, and the cost estimate (same tokens all in Opus as the reference).
-    const r3 = [`${v === 'wf' ? 'workflow' : v === 'live' ? 'live' : 'chat'}${d.sel ? ' attiva ' + dur(d.sel) : ''}`, d.sag ? `${d.sag} agenti` : ''].filter(Boolean).join(' · ') + (d.stok ? `\n${kt(d.stok + extra)} token` : '')
+    const r3 = [`${tr(v === 'wf' ? 'workflow' : v === 'live' ? 'live' : 'chat')}${d.sel ? ' ' + tr('attiva') + ' ' + dur(d.sel) : ''}`, d.sag ? `${d.sag} ${tr('agenti')}` : ''].filter(Boolean).join(' · ') + (d.stok ? `\n${kt(d.stok + extra)} ${tr('token')}` : '')
     // Saving in tokens, not money: tokens the agents did on models lower than Opus, and their share of the session.
     const bassi = ['light', 'medium', 'high'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0), 0)
-    const r4 = bassi > 0 ? `risparmio ${kt(bassi)} token su modelli sotto Opus${d.stok ? ` (${bassi / d.stok < 0.001 ? 'meno dello 0,1' : (bassi / d.stok * 100).toFixed(1).replace('.', ',')}%)` : ''}` : ''
+    const r4 = bassi > 0 ? `${tr('risparmio')} ${kt(bassi)} ${tr('token')} ${tr('su modelli sotto Opus')}${d.stok ? ` (${bassi / d.stok < 0.001 ? tr('meno dello 0,1') : (bassi / d.stok * 100).toFixed(1).replace('.', ',')}%)` : ''}` : ''
     const indice = indiceOtt(d)
-    const r5 = indice === null ? '' : `indice ottimizzazione ${indice}/100${bassi > 0 ? `\nrisparmio ${kt(bassi)} token sotto Opus${d.stok ? ` (${bassi / d.stok < 0.001 ? '<0,1' : (bassi / d.stok * 100).toFixed(1).replace('.', ',')}%)` : ''}` : ''}`
-    const r2 = d.righe.length === 0 && d.interrotti === 0 ? 'Nessun agente: lavora solo la chat.' : ''
+    const r5 = indice === null ? '' : `${tr('indice ottimizzazione')} ${indice}/100${bassi > 0 ? `\n${tr('risparmio')} ${kt(bassi)} ${tr('token')} ${tr('sotto Opus')}${d.stok ? ` (${bassi / d.stok < 0.001 ? tr('<0,1') : (bassi / d.stok * 100).toFixed(1).replace('.', ',')}%)` : ''}` : ''}`
+    const r2 = d.righe.length === 0 && d.interrotti === 0 ? tr('Nessun agente: lavora solo la chat.') : ''
     const icona: Record<string, string> = { lavora: '▶', fermo: '⏸', completato: '✓' }
 
     const adesso = await $.clock.now().catch(() => 0)
@@ -594,10 +900,10 @@ export const register: Register = (on, options) => {
     const p0 = await read($, passo).catch(() => null)
     const secT = inizioTurno ? Math.max(0, Math.round((adesso - new Date(inizioTurno).getTime()) / 1000)) : 0
     const ora0 = hist[0] ? spiega(hist[0]).cosa : ''
-    const cosaFa = fase || ora0
+    const cosaFa = fase ? tr(fase + '…') : ora0
     const vivo = lavoraOra
-      ? `in corso da ${dur(secT)}${cosaFa ? ' · ' + cosaFa : ''}${car > 0 ? ` · ${kt(car)} token` : ''} · ${(p0?.model ?? d.chat).replace('claude-', '')} ${p0?.effort ?? ''} · ${d.lavorano} agenti al lavoro`.replace(/ {2,}/g, ' ')
-      : 'pronto'
+      ? `${tr('in corso da')} ${dur(secT)}${cosaFa ? ' · ' + cosaFa : ''}${car > 0 ? ` · ${kt(car)} ${tr('token')}` : ''} · ${(p0?.model ?? d.chat).replace('claude-', '')} ${p0?.effort ?? ''} · ${d.lavorano} ${tr('agenti al lavoro')}`.replace(/ {2,}/g, ' ')
+      : tr('pronto')
     const rigaVivo = desk ? scritta(vivo) : <Text dimColor>{vivo}</Text>
     const righeOra = hist.length === 0 ? null : (
       <Box flexDirection="column">
@@ -614,7 +920,7 @@ export const register: Register = (on, options) => {
       </Box>
     )
     const scegli = async (x: string) => { await update($, vista, () => x); last = 0; await ricarica($).catch(() => undefined) }
-    const azzera = async () => { const ora = new Date(await $.clock.now()).toISOString(); await update($, reset, () => ora); await scegli('wf'); $.ui.toast('Gear: workflow azzerato da adesso') }
+    const azzera = async () => { const ora = new Date(await $.clock.now()).toISOString(); await update($, reset, () => ora); await scegli('wf'); $.ui.toast(tr('Gear: workflow azzerato da adesso')) }
     // Real buttons: the chosen view is the primary one (no drawing laid over a button, which showed its focus box).
     // Small text buttons (footnote size); the chosen view is dark with a full dot.
     const pill = (k: string, s: string, fn = () => scegli(k), si = v === k) => piccolo(k, `${si ? '●' : '○'} ${s}`, fn, si ? '#3a3a36' : undefined)
@@ -636,12 +942,12 @@ export const register: Register = (on, options) => {
     const lg = (await read($, lingua).catch(() => 'it')) || 'it'
     const sel = (
       <Box flexDirection="row" gap={3} alignItems="center">
-        {pill('live', 'live')}
-        {pill('wf', rs ? `workflow da ${new Date(rs).toTimeString().slice(0, 5)}` : 'workflow')}
-        {pill('tot', 'totale chat')}
+        {pill('live', tr('live'))}
+        {pill('wf', rs ? `${tr('workflow da')} ${new Date(rs).toTimeString().slice(0, 5)}` : tr('workflow'))}
+        {pill('tot', tr('totale chat'))}
         {chiede
-          ? <Box flexDirection="row" gap={2}>{piccolo('q', 'azzerare il workflow da adesso?', () => undefined)}{piccolo('ok', 'OK', async () => { await update($, comando, () => ''); await azzera() }, COL.high)}{piccolo('no', 'annulla', () => update($, comando, () => ''))}</Box>
-          : piccolo('reset', '↺ nuovo workflow', () => update($, comando, () => 'reset?'))}
+          ? <Box flexDirection="row" gap={2}>{piccolo('q', tr('azzerare il workflow da adesso?'), () => undefined)}{piccolo('ok', tr('OK'), async () => { await update($, comando, () => ''); await azzera() }, COL.high)}{piccolo('no', tr('annulla'), () => update($, comando, () => ''))}</Box>
+          : piccolo('reset', tr('↺ nuovo workflow'), () => update($, comando, () => 'reset?'))}
       </Box>
     )
 
@@ -654,7 +960,7 @@ export const register: Register = (on, options) => {
           if (!desk) return (
             <Text key={String(i)} wrap="truncate-end" dimColor={x.stato === 'completato'}>
               <Text color={x.stato === 'fermo' ? c('high') : c(x.liv, tinta ? GRIGIO : undefined)}>{icona[x.stato] ?? '·'} {x.nome}{x.dir === '▲' || x.dir === '▼' ? ' ' + x.dir : ''}</Text>
-              <Text dimColor>  {x.stato === 'fermo' ? `fermo da ${dur(x.ago)}  ` : ''}{x.model}  {kt(x.tok)} token  {x.desc}</Text>
+              <Text dimColor>  {x.stato === 'fermo' ? `${tr('fermo da')} ${dur(x.ago)}  ` : ''}{x.model}  {kt(x.tok)} {tr('token')}  {x.desc}</Text>
             </Text>
           )
           const g = svgAgente(x, tinta)
@@ -672,7 +978,7 @@ export const register: Register = (on, options) => {
         {desk ? (() => { const g = svgGriglia(d.perliv ?? {}, tinta, d.livello); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={84} /></Box> })() : null}
         </Box>
         {apriG ? <Box flexDirection="column"><Box flexDirection="row" gap={2}>{Object.keys(GUIDA).map(k => piccolo('lg' + k, k.toUpperCase(), () => update($, lingua, () => k), k === lg ? '#3a3a36' : undefined))}</Box>{(GUIDA[lg] ?? GUIDA.it).map((x, i) => <Box key={'g' + i}>{desk ? scritta(x) : <Text dimColor>{x}</Text>}</Box>)}</Box> : null}
-        {desk ? <Box flexDirection="row" justifyContent="flex-end" alignItems="center" gap={2}>{piccolo('guida', apriG ? '× guida' : '? guida', () => update($, guida, g => !g))}<Svg source={`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="16" viewBox="0 0 80 16">${STILE}<text x="80" y="12" class="sm mu" text-anchor="end">Gear ${VERSIONE}</text></svg>`} alt={`Gear ${VERSIONE}`} width={80} height={16} /></Box> : <Text dimColor>Gear {VERSIONE}</Text>}
+        {desk ? <Box flexDirection="row" justifyContent="flex-end" alignItems="center" gap={2}>{piccolo('guida', tr(apriG ? '× guida' : '? guida'), () => update($, guida, g => !g))}<Svg source={`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="16" viewBox="0 0 80 16">${STILE}<text x="80" y="12" class="sm mu" text-anchor="end">Gear ${VERSIONE}</text></svg>`} alt={`Gear ${VERSIONE}`} width={80} height={16} /></Box> : <Text dimColor>Gear {VERSIONE}</Text>}
       </Box>,
     )
   })

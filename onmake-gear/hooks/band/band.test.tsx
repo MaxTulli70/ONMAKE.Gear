@@ -62,3 +62,15 @@ test('desktop: the logo button opens the site', async ($, on) => {
   expect(JSON.stringify(runs)).toContain('https://www.onmake.it')
   await ui.unmount()
 })
+
+test('desktop: the language chosen in the guide changes the whole bar', async ($, on) => {
+  on('ui.render', ($: any, e: any) => { const { Text } = $.ui.resolve(e); return <Text>engine</Text> })
+  on('state.get', (_: unknown, e: { plugin: string; key: string }) => ({
+    value: { value: e.plugin === 'onmake-gear' ? (e.key === 'lingua' ? 'en' : SEED[e.key]) : undefined, version: 1 },
+  }))
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  const svg = await ui.find({ type: 'Svg' })
+  expect((svg?.props as { source?: string })?.source).toContain('index')
+  expect((svg?.props as { source?: string })?.source).not.toContain('indice')
+  await ui.unmount()
+})
