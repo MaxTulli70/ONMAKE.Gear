@@ -49,24 +49,21 @@ test('terminal: the bar is Text, no Svg', async ($, on) => {
   await ui.unmount()
 })
 
-test('control: stop, resume and send call the session tools', async ($, on) => {
+test('control: resume, cancel, send and stop act on this chat', async ($, on) => {
   seed(on)
-  const calls: any[] = []
-  on('tool.call', (_: unknown, e: any) => { calls.push(e); return { result: 'ok' } })
+  const sent: string[] = []
+  on('prompt.submit', (_: unknown, e: any) => { sent.push(e.text); return { text: e.text } })
+  on('turn.abort', () => ({}))
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
 
-  await ui.press({ key: 'ferma' })
-  expect(calls).toHaveLength(1)
-  expect(calls[0].tool).toBe('mcp__ccd_session_mgmt__stop_session')
-  expect(calls[0].session_id).toBe('local_abc')
-
   await ui.press({ key: 'riprendi' })
-  expect(calls[1].tool).toBe('mcp__ccd_session_mgmt__send_message')
-  expect(calls[1].session_id).toBe('local_abc')
-  expect(calls[1].message).toBe('continua da dove eri rimasto')
-
+  expect(sent[0]).toBe('continua da dove eri rimasto')
+  await ui.press({ key: 'annulla' })
+  expect(sent[1]).toMatch(/annullato/)
   await ui.input({ key: 'comando', text: 'fai la prova' })
-  expect(calls[2].message).toBe('fai la prova')
+  expect(sent[2]).toBe('fai la prova')
+  await ui.press({ key: 'ferma' })
+  expect(sent).toHaveLength(3)
   await ui.unmount()
 })
 

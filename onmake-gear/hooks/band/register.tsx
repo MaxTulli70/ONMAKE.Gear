@@ -7,7 +7,7 @@ import type { Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.35'
+const VERSIONE = '0.6.36'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -232,27 +232,29 @@ async function caricaSessioni($: EngineInterface) {
   }
 }
 
-async function azione($: EngineInterface, cosa: 'invia' | 'ferma' | 'riprendi', scritto?: string) {
-  const id = await read($, scelta)
-  const msg = cosa === 'riprendi' ? 'continua da dove eri rimasto' : (scritto ?? (await read($, comando))).trim()
-  if (id === '') return $.ui.toast('Gear: scegli una sessione')
+// The controls act on the chat this bar sits in: stop the running turn, resume, cancel, or send a command.
+let turnoId: string | undefined
+async function azione($: EngineInterface, cosa: 'invia' | 'ferma' | 'riprendi' | 'annulla', scritto?: string) {
+  const msg = cosa === 'riprendi' ? 'continua da dove eri rimasto'
+    : cosa === 'annulla' ? 'Lavoro annullato: non continuare il compito di prima, aspetta le mie istruzioni.'
+    : (scritto ?? (await read($, comando))).trim()
   if (cosa === 'invia' && msg === '') return $.ui.toast('Gear: scrivi un comando')
   try {
-    const r = cosa === 'ferma'
-      ? await $.tool.call({ tool: 'mcp__ccd_session_mgmt__stop_session', session_id: id } as never)
-      : await $.tool.call({ tool: 'mcp__ccd_session_mgmt__send_message', session_id: id, message: msg } as never)
-    const o = r as { isError?: boolean }
-    const t = testo(r).slice(0, 80)
-    $.ui.toast(o.isError ? `Gear: errore, ${t}` : `Gear: ${cosa === 'ferma' ? 'fermata' : 'inviato'}. ${t}`)
-    if (cosa === 'invia' && !o.isError) await update($, comando, () => '')
+    if (cosa === 'ferma' || cosa === 'annulla') {
+      if (turnoId) await $.turn.abort({ turnId: turnoId }).catch(() => undefined)
+      turnoId = undefined
+      if (cosa === 'ferma') return $.ui.toast('Gear: fermata')
+    }
+    await $.prompt.submit({ text: msg })
+    $.ui.toast(`Gear: ${cosa === 'annulla' ? 'annullato' : 'inviato'}`)
+    if (cosa === 'invia') await update($, comando, () => '')
   } catch (err) {
     $.ui.toast(`Gear: non riuscito (${String(err).slice(0, 80)})`)
   }
 }
 
 async function apriChiudi($: EngineInterface) {
-  const ora = await update($, aperta, v => !v)
-  if (ora) void caricaSessioni($)
+  await update($, aperta, v => !v)
 }
 
 let last = 0
@@ -282,6 +284,11 @@ export const register: Register = (on, options) => {
   })
 
   // turn.step streams, so the hook is a generator that passes every chunk through untouched.
+  on('turn.start', ($, e, next) => {
+    if (e.agentId === undefined) turnoId = e.turnId
+    return next(e)
+  })
+
   on('turn.step', async function* ($, e, next) {
     if (e.agentId === undefined) {
       const v = { model: e.model, effort: e.effort === undefined ? '' : String(e.effort) }
@@ -394,8 +401,6 @@ export const register: Register = (on, options) => {
     const testa = desk ? testaDesk : testaTesto
     if (!open) return stack(testa)
 
-    const lista = await read($, sessioni)
-    const sel = await read($, scelta)
     const cmd = await read($, comando)
     const scritta = (s: string) => { const g = svgScritta(s); return <Svg source={g.source} alt={s} width={g.width} height={24} /> }
     // Facts of the current job (since your last message): time active, tokens split chat/agents, steps.
@@ -422,16 +427,14 @@ export const register: Register = (on, options) => {
         })}
         {d.interrotti > 0 && <Text size="footnote" dimColor>✗ {d.interrotti} interrotti (mai finiti, fermi da oltre 1h)</Text>}
         <Box width={e.props.bodyColumns} flexDirection="column">
-          <Input key="comando" rows={1} label="Comando" placeholder="Comando per la sessione scelta, poi Invio ↵" value={cmd} submitLabel="↵" onInput={v => void update($, comando, () => v)} onSubmit={v => void azione($, 'invia', v)} />
+          <Input key="comando" rows={1} label="Comando" placeholder="Comando per questa chat, poi Invio ↵" value={cmd} submitLabel="↵" onInput={v => void update($, comando, () => v)} onSubmit={v => void azione($, 'invia', v)} />
         </Box>
-        <Box width={e.props.bodyColumns} flexDirection="row" justifyContent="space-between" alignItems="flex-start" gap={2}>
+        <Box width={e.props.bodyColumns} flexDirection="row" justifyContent="flex-start" alignItems="flex-start" gap={4}>
         <Box flexDirection="column" flexShrink={1} gap={1}>
         <Box flexDirection="row" gap={2} flexWrap="wrap" alignItems="center">
-          {lista.length > 0
-            ? <Box flexDirection="row" gap={1} alignItems="center">{desk ? scritta('Sessione') : null}<Select key="sessione" label={desk ? '' : 'Sessione'} options={lista.map(x => ({ value: x.id, label: x.nome || x.id.slice(0, 8) }))} value={sel || lista[0].id} onSelect={v => void update($, scelta, () => v)} /></Box>
-            : tasto('ricarica', 'Carica sessioni ↻', () => caricaSessioni($))}
           {tastino('ferma', 'Ferma', () => azione($, 'ferma'), c('max'))}
           {tastino('riprendi', 'Riprendi', () => azione($, 'riprendi'), c('medium'))}
+          {tastino('annulla', 'Annulla', () => azione($, 'annulla'), GRIGIO)}
         </Box>
           {desk ? scritta(r1) : <Text dimColor>{r1}</Text>}
         </Box>
