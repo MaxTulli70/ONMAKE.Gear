@@ -2,6 +2,7 @@ export type Riga = { liv: string; nome: string; tipo: string; dir: string; model
 export type Sessione = { id: string; nome: string }
 export type Dati = {
   chat: string
+  compito: string
   livello: string | null
   dir: string
   agenti: number

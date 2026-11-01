@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 const DATI = {
-  chat: 'opus-5-5', livello: 'medium', dir: '▲', agenti: 3, fini: 1, lavorano: 1, fermi: 1, interrotti: 0, completi: 1,
+  compito: 'prova', chat: 'opus-5-5', livello: 'medium', dir: '▲', agenti: 3, fini: 1, lavorano: 1, fermi: 1, interrotti: 0, completi: 1,
   attivi: [{ liv: 'high', tipo: 'gear-high', nome: 'high', desc: 'x', model: 'sonnet-5-5' }],
   tok: 1500000, cr: 0, reale: 1, opus: 2, risp: 0.5, perc: 0.4, fatti: 2, tot: 5, el: 600, eta: 900,
   righe: [{ liv: 'high', dir: '▲', model: 'sonnet-5-5', tok: 1000, fine: false, stato: 'lavora', ago: 5, tipo: 'gear-high', nome: 'high', desc: 'job' }],

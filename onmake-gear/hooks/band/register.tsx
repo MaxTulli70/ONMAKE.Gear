@@ -45,7 +45,7 @@ function riga(d: Dati, compact: boolean) {
 // shortcut: text widths are estimated (7.4 px per character at 13 px), so a very long label may sit a little loose.
 const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const largo = (t: string) => Math.ceil([...t].length * 7.4)
-const STILE = '<style>text{font:400 13px -apple-system,system-ui,sans-serif;fill:#55554f}.mu{fill:#8a8a84}.v{fill:#d6d6cf}.pl{font-weight:500;fill:#1c1c1a}@media(prefers-color-scheme:dark){text{fill:#c9c9d1}.mu{fill:#8d8d97}.v{fill:#3a3a42}}</style>'
+const STILE = '<style>text{font:400 13px -apple-system,system-ui,sans-serif;fill:#55554f}.mu{fill:#8a8a84}.v{fill:#d6d6cf}@media(prefers-color-scheme:dark){text{fill:#c9c9d1}.mu{fill:#8d8d97}.v{fill:#3a3a42}}</style>'
 
 function svgRiga(d: Dati, tinta: boolean, compact: boolean) {
   const out: string[] = []
@@ -62,12 +62,18 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean) {
     for (let i = 0; i < 5; i++) out.push(`<rect x="${x + i * 10}" y="6.5" width="8" height="11" rx="1.8"${i < n ? ` style="fill:${tinta ? col : '#8a8a84'}"` : ' class="v"'}/>`)
     x += 50 + 4
   }
-  const lv = d.livello ? d.livello.toUpperCase() : 'nessuna marcia'
-  const pill = `⚙ ${lv}${d.dir === '▲' || d.dir === '▼' ? ' ' + d.dir : ''}`
-  const pw = largo(pill) + 14
-  out.push(`<rect x="0" y="2" width="${pw}" height="20" rx="10" style="fill:${d.livello && tinta ? COL[d.livello] : '#d6d6cf'}"/>`)
-  out.push(`<text x="7" y="${Y}" class="pl">${esc(pill)}</text>`)
-  x = pw
+  // Gear ladder: five steps rising from LIGHT to MAX, filled up to the current gear, each in its own color; then the name and the step.
+  const MARCE = ['light', 'medium', 'high', 'opus', 'max']
+  const k = d.livello ? MARCE.indexOf(d.livello) : -1
+  MARCE.forEach((m, i) => {
+    const h = 5 + i * 3.5
+    out.push(`<rect x="${i * 7}" y="${20 - h}" width="5" height="${h}" rx="1.2"${i <= k ? ` style="fill:${tinta ? COL[m] : '#55554f'}"` : ' class="v"'}/>`)
+  })
+  x = 5 * 7 + 6
+  if (k >= 0) {
+    t(d.livello!.toUpperCase(), '', tinta ? COL[d.livello!] : undefined); sp(4)
+    t(`${k + 1}/5${d.dir === '▲' ? ' ▲' : d.dir === '▼' ? ' ▼' : ''}`, 'mu')
+  } else t('nessuna marcia', 'mu')
   // The model the chat is using now, e.g. 'opus-5-5' -> 'Opus 5.5'.
   if (d.chat) { const [f, ...v] = d.chat.split('-'); sp(8); t(`${f.charAt(0).toUpperCase()}${f.slice(1)} ${v.join('.')}`, 'mu') }
   sep(); t(`${kt(d.tok)} tok`, 'mu')
@@ -79,9 +85,11 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean) {
       sep(); t('agenti', 'mu'); sp(5)
       vivi.forEach(([k, g, col], i) => { if (i) sp(6); t(`${g} ${k}`, col ? '' : 'mu', tinta ? col : undefined) })
     }
-    // What the working agent is doing, in its gear color.
+    // Who is working now and on what: the working agent and its task, else the main chat and the current step or your last request.
     const a0 = d.attivi[0]
-    if (a0) { sep(); t(`${a0.nome}: ${a0.desc.slice(0, 38)}`, '', tinta ? COL[a0.liv] ?? GRIGIO : undefined) }
+    sep()
+    if (a0) t(`▶ ${a0.nome}: ${a0.desc.slice(0, 40)}`, '', tinta ? COL[a0.liv] ?? GRIGIO : undefined)
+    else if (d.compito) t(`chat: ${d.compito.slice(0, 48)}`)
     if (d.perc !== null) { sep(); celle(d.perc, COL.medium); t(`${Math.round(d.perc * 100)}% (${d.fatti}/${d.tot} passi)`) }
     // Time only as an estimate of what is left, when a task list allows one; a bare timer told nothing.
     if (d.eta !== null) { sep(); t(`restano ~${dur(d.eta)}`, '', tinta ? COL.high : undefined) }

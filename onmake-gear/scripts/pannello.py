@@ -60,6 +60,7 @@ def leggi(path):
     """-> dict(model, v=[in,out,cw,cr], a, b, tools, todos)"""
     msgs, ts, model, tools, todos = {}, [], "?", 0, None
     ora_mod = None  # modello dell'ultimo messaggio: quello che la chat usa adesso
+    ultimo_txt = ""  # prima riga del tuo ultimo messaggio: il compito attuale
     quando, ultimo, todo_t = {}, None, None  # ora di ogni messaggio, ultimo messaggio dell'utente, ora dell'ultimo elenco passi
     for riga in open(path, errors="replace"):
         try:
@@ -75,6 +76,9 @@ def leggi(path):
             c = m.get("content")
             if (isinstance(c, str) and not c.startswith("<")) or (isinstance(c, list) and any(isinstance(x, dict) and x.get("type") == "text" for x in c) and not any(isinstance(x, dict) and x.get("type") == "tool_result" for x in c)):
                 ultimo = t
+                testo = c if isinstance(c, str) else " ".join(x.get("text", "") for x in c if isinstance(x, dict) and x.get("type") == "text")
+                righe = [r.strip() for r in testo.splitlines() if r.strip() and not r.strip().startswith("<")]
+                ultimo_txt = righe[0] if righe else ultimo_txt
         if d.get("type") != "assistant" or not isinstance(m, dict):
             continue
         if isinstance(m.get("content"), list):
@@ -107,7 +111,7 @@ def leggi(path):
     tt = [x for x in ts if ultimo and x >= ultimo]
     att_t = sum(g for g in ((y - x).total_seconds() for x, y in zip(tt, tt[1:])) if g <= 300)
     return dict(model=model, pm=pm, v=v, a=ts[0] if ts else None, b=ts[-1] if ts else None, tools=tools, todos=todos, att=att,
-                ultimo=ultimo, vt=vt, att_t=att_t, todo_t=todo_t, ora_mod=(ora_mod or "").replace("claude-", ""))
+                ultimo=ultimo, vt=vt, att_t=att_t, todo_t=todo_t, ultimo_txt=ultimo_txt, ora_mod=(ora_mod or "").replace("claude-", ""))
 
 def sessione(cartella, sid):
     d = os.path.expanduser("~/.claude/projects/" + re.sub(r"[^A-Za-z0-9]", "-", cartella))
@@ -190,7 +194,8 @@ def breve(r):
     tok = sum(m["vt"][:3]) + sum(sum(x["v"][:3]) for x in ag)
     lav = [x for x in ag if x["stato"] == "lavora"]
     vis = [x for x in ag if x["stato"] in ("lavora", "fermo")] + [x for x in ag if x["stato"] == "completato"][-5:]
-    return dict(chat=m["ora_mod"], livello=r["livello"], dir=r["dir"], agenti=len(ag), fini=sum(1 for x in ag if x["fine"]), lavorano=len(lav),
+    passo = next((t.get("activeForm") or t.get("content") for t in (todos or []) if t.get("status") == "in_progress"), None)
+    return dict(compito=(passo or m["ultimo_txt"])[:60], chat=m["ora_mod"], livello=r["livello"], dir=r["dir"], agenti=len(ag), fini=sum(1 for x in ag if x["fine"]), lavorano=len(lav),
                 fermi=sum(1 for x in ag if x["stato"] == "fermo"), completi=sum(1 for x in ag if x["fine"]),
                 interrotti=sum(1 for x in ag if x["stato"] == "interrotto"),
                 attivi=[dict(liv=x["liv"], tipo=x["tipo"], nome=x["nome"], desc=x["desc"][:40], model=x["model"]) for x in lav],
