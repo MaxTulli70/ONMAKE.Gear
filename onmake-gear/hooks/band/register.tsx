@@ -3,6 +3,8 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { Dati, Passo, Sessione } from '../../types'
 
+// Model colours from the gear schema, darkened to read as text.
+const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
@@ -85,9 +87,9 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null) {
   // The model the chat is using now, e.g. 'opus-5-5' -> 'Opus 5.5'.
   // Model and effort the chat is using now, then the tokens of the current job per model.
   const mod = p?.model || d.chat
-  if (mod) { sep(); t('chat', 'mu'); sp(5); t(nomeModello(mod)); if (p?.effort) { sp(5); t(p.effort, 'mu') } }
+  if (mod) { sep(); t('chat', 'mu'); sp(5); t(nomeModello(mod), '', tinta ? colMod(mod, p?.effort) : undefined); if (p?.effort) { sp(5); t(p.effort, 'mu') } }
   // Tokens of the current job per model; nothing while the job has used none yet.
-  if (d.tokmod && d.tokmod.length > 0) { sep(); d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); t(nomeModello(m).split(' ')[0], 'mu'); sp(4); t(kt(n)) }) }
+  if (d.tokmod && d.tokmod.length > 0) { sep(); d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); t(nomeModello(m).split(' ')[0], '', tinta ? colMod(m) : undefined); sp(4); t(kt(n)) }) }
   else if (d.tok > 0) { sep(); t(`${kt(d.tok)} tok`, 'mu') }
   if (!compact) {
     // Only what is useful now: the current job (since your last message); counts at zero and a missing task list are left out.
