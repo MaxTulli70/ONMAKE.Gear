@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.70'
+const VERSIONE = '0.6.71'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -94,7 +94,7 @@ function spiega(ora: Attivo) {
   return { cosa: chi + (STRUMENTI[base] ?? base), dove: ora.cosa }
 }
 
-function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lavora = false, ora: Attivo | null = null, adesso = 0) {
+function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lavora = false, ora: Attivo | null = null, adesso = 0, vivoTok = 0) {
   const out: string[] = lavora ? [ANIM] : []
   let x = 0
   const H = 26, Y = 18
@@ -151,7 +151,8 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
     x += 44; t(p.effort, 'mu')
   } }
   // Tokens of the current job per model; nothing while the job has used none yet.
-  if (d.tokmod && d.tokmod.length > 0) { sep(); d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); t(nomeModello(m).split(' ')[0], '', tinta ? colMod(m) : undefined); sp(4); t(`${kt(n)} token`) }) }
+  if (lavora && vivoTok > 0) { sep(); t(nomeModello(mod || d.chat).split(' ')[0], '', tinta ? colMod(mod || d.chat) : undefined); sp(4); t(`${kt(vivoTok)} token`) }
+  else if (d.tokmod && d.tokmod.length > 0) { sep(); d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); t(nomeModello(m).split(' ')[0], '', tinta ? colMod(m) : undefined); sp(4); t(`${kt(n)} token`) }) }
   else if (d.tok > 0) { sep(); t(`${kt(d.tok)} token`, 'mu') }
   // Whole session: all tokens so far and how many agents it has used.
   const io = indiceOtt(d)
@@ -485,7 +486,7 @@ export const register: Register = (on, options) => {
       // A Button holds only strings and Text (an Svg inside is refused), so its label is Text on every surface.
       return <Button key={k} plain onPress={fn}><Text color={col} dimColor={!col}>{s}</Text></Button>
     }
-    const riga1 = svgRiga(d, tinta, compact, await read($, passo), Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, await read($, attivo).catch(() => null), await $.clock.now().catch(() => 0))
+    const riga1 = svgRiga(d, tinta, compact, await read($, passo), Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, await read($, attivo).catch(() => null), await $.clock.now().catch(() => 0), car)
     const testaDesk = (
       <Box flexDirection="row" alignItems="center" gap={1} width={e.props.bodyColumns}>
         <Box flexGrow={1} flexShrink={1} overflow="hidden">
@@ -547,7 +548,10 @@ export const register: Register = (on, options) => {
     const scritta = (s: string) => <Box flexDirection="column">{s.split('\n').map((x, i) => { const g = svgScritta(x, undefined, 300); return <Svg key={String(i)} source={g.source} alt={x} width={g.width} height={18} /> })}</Box>
     // Facts of the current job (since your last message): time active, tokens split chat/agents, steps.
     const tokAg = d.righe.reduce((a, r) => a + (r.tok || 0), 0)
-    const parti = [`lavoro attivo da ${dur(d.el)}`, `${kt(d.tok)} token`, `chat ${kt(Math.max(0, d.tok - tokAg))}`, `agenti ${kt(tokAg)}`]
+    const oraJ = await $.clock.now().catch(() => 0)
+    const lav0 = Boolean((e.props as { isWorking?: boolean }).isWorking) && inizioTurno && oraJ
+    const tokJob = lav0 ? Math.max(d.tok, car) : d.tok
+    const parti = [`lavoro attivo da ${lav0 ? dur(Math.round((oraJ - new Date(inizioTurno).getTime()) / 1000)) : dur(d.el)}`, `${kt(tokJob)} token`, `chat ${kt(Math.max(0, tokJob - tokAg))}`, `agenti ${kt(tokAg)}`]
     if (d.tot > 0) parti.push(`passi ${d.fatti} di ${d.tot}`)
     const r1 = parti.slice(0, 2).join(' · ') + '\n' + parti.slice(2).join(' · ')
     // Whole session, and the cost estimate (same tokens all in Opus as the reference).
