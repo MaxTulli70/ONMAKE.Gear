@@ -1,6 +1,6 @@
 {
  "name": "onmake-gear",
- "version": "0.6.8",
+ "version": "0.6.9",
  "description": "ONMAKE Gear: the right model at the right moment, effort matched to the task, short peaks, STATO.md and REVERSE to save tokens without losing quality. / Il modello giusto al momento giusto, effort allineato al compito. Bar by the prompt and local graphic panel. / Barra vicino al campo di scrittura e pannello grafico.",
  "hooks": [
   "./hooks/hooks.json",

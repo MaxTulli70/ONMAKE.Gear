@@ -236,8 +236,8 @@ export const register: Register = (on, options) => {
         <Box flexShrink={0} flexDirection="row" gap={0} alignItems="center">
           {/* A button takes only text, so the logo is an interactive SVG whose own link opens the site. */}
           <Svg source={LOGO} alt="ONMAKE, apre onmake.it" width={32} height={34} isInteractive />
-          {tasto('tendina', open ? '▴' : '▾', () => apriChiudi($))}
-          {tasto('pannello', '↗', () => apriPannello($).catch(() => $.ui.toast('Gear: pannello non aperto')))}
+          {tasto('tendina', open ? '▲' : '▼', () => apriChiudi($))}
+          {tasto('pannello', '⬈', () => apriPannello($).catch(() => $.ui.toast('Gear: pannello non aperto')))}
         </Box>
       </Box>
     )
