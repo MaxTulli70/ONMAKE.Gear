@@ -19,16 +19,35 @@ The right model at the right moment for the task at hand, with effort matched to
 
 The type of work picks the model; effort starts low whenever the job can be done that way and goes up only when the check fails. Projects (design, architecture, a new interface) start directly at OPUS. REVERSE fixes errors starting from LIGHT.
 
+The chat decides, phase by phase, which model suits the work and can hand a phase to the matching gear agent; this is a suggestion to the chat, not an obligation.
+
 **Install.**
 ```
 claude plugin marketplace add MaxTulli70/ONMAKE.Gear
 claude plugin install onmake-gear@onmake
 ```
-License MIT. Version 0.6.0, in testing.
+License MIT. Version 0.6.89, in testing.
 
 Italiano: see [README.it.md](README.it.md).
 
-**Bar and panel.** In Claude Code a small bar above the prompt shows the gear (colored pill), tokens, agents working ▶, stalled ⏸, done ✓ and interrupted ✗, work progress from the task list (5 cells, 20% each) and active time; `Dettagli` opens the list of agents and a field to send a command, stop or resume another session of the desktop app; `Pannello` (or `/gear-pannello`) opens a local page with workflow nodes, timeline, tokens per model and per gear, and the estimated saving against doing everything in Opus. Everything is read from local transcripts; prices for the estimate are editable in `~/.config/onmake-gear/prezzi.json`. Settings: position (above, or one line in the status line below), compact, colors.
+**Bar and panel.** In Claude Code a bar above the prompt shows, in the main row (desktop):
+- five gear bars from LIGHT to MAX with the current one filled, the gear name and an arrow with the last jump, up or down;
+- while working, the current tool and target with its duration, or "thinking"; when idle, "ready";
+- the chat model, an effort bar (low, medium, high, max), tokens by model or the total, and the optimization index.
+
+Buttons: the ONMAKE logo opens onmake.it; the arrow opens the dropdown; ↗ opens the HTML panel in the browser.
+
+The dropdown has three views: live (from the start of the current turn), workflow (from the saved reset) and total chat (the whole chat). It holds the speedometer, a dial with zones L M H O X and a needle that follows gear and effort (4 effort steps per gear).
+
+The optimization index goes from 0 to 100. Weights: agents light 1, medium 2, high 3, opus 5; chat Haiku 1, Sonnet 2, other 5. Green from 50, yellow from 20. Savings shows the tokens done by light, medium and high agents with their percent of the total.
+
+"↺ nuovo workflow" asks for confirmation (OK / annulla); the question disappears after 6 seconds. Reset does not delete the chat, it only restarts the workflow view.
+
+Languages: Italian (default), English, German, French, Spanish, chosen from the guide; "? guida" opens a short explanation.
+
+Data refreshes at most every 8 seconds and is read from the local transcripts, with no network. Prices are in `~/.config/onmake-gear/prezzi.json`.
+
+Panel: `python3 onmake-gear/scripts/pannello.py --cartella DIR [--sessione ID] [--json | --html FILE]`, or `/gear-pannello`.
 
 **Status line.** Shows the current gear, e.g. `⚙ LIGHT ▼` (arrow = last shift up/down, `⚙ –` = no gear sub-agents yet). The desktop app does not draw it; in the terminal, enable it: set `statusLine` in `~/.claude/settings.json` to `{"type":"command","command":"python3 /path/to/onmake-gear/scripts/statusline.py"}`.
 

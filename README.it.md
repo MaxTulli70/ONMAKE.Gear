@@ -25,6 +25,8 @@ All'avvio di ogni sessione di Claude Code, ONMAKE Gear dà alla sessione una reg
 
 Il tipo di lavoro sceglie il modello; l'effort parte basso quando il lavoro si può fare così e sale solo se il controllo fallisce. I progetti (progettazione, architettura, un'interfaccia nuova) partono direttamente da OPUS. REVERSE corregge gli errori partendo da LIGHT.
 
+La chat decide, fase per fase, quale modello conviene al lavoro e può affidare una fase all'agente gear corrispondente; è un suggerimento alla chat, non un obbligo.
+
 ## Installazione
 
 ```
@@ -32,9 +34,26 @@ claude plugin marketplace add MaxTulli70/ONMAKE.Gear
 claude plugin install onmake-gear@onmake
 ```
 
-Versione 0.6.0, in prova.
+Versione 0.6.89, in prova.
 
-**Barra e pannello.** In Claude Code una barra piccola sopra il campo di scrittura mostra la marcia (etichetta colorata), i token, gli agenti al lavoro ▶, fermi ⏸, completati ✓ e interrotti ✗, l'avanzamento dall'elenco dei passi (5 caselle da 20%) e il tempo attivo; `Dettagli` apre l'elenco degli agenti e un campo per mandare un comando, fermare o far ripartire un'altra sessione dell'app desktop; `Pannello` (o `/gear-pannello`) apre una pagina locale con i nodi del workflow, la linea del tempo, i token per modello e per marcia e il risparmio stimato rispetto a fare tutto in Opus. Tutto viene letto dalle trascrizioni locali; i prezzi della stima si cambiano in `~/.config/onmake-gear/prezzi.json`. Impostazioni: posizione (sopra, o una riga nella riga di stato sotto), discreta, colori.
+**Barra e pannello.** In Claude Code una barra sopra il campo di scrittura mostra, nella riga principale (desktop):
+- cinque barre di marcia da LIGHT a MAX con quella attuale piena, il nome della marcia e una freccia con l'ultimo salto, su o giù;
+- durante il lavoro lo strumento attuale e il bersaglio con la durata, oppure "thinking"; a riposo "ready";
+- il modello della chat, una barra di effort (low, medium, high, max), i token per modello o il totale e l'indice di ottimizzazione.
+
+Pulsanti: il logo ONMAKE apre onmake.it; la freccia apre il menu a tendina; ↗ apre il pannello HTML nel browser.
+
+Il menu a tendina ha tre viste: live (dall'inizio del turno attuale), workflow (dal reset salvato) e chat totale (tutta la chat). Contiene il contachilometri, un quadrante con le zone L M H O X e una lancetta che segue marcia ed effort (4 passi di effort per marcia).
+
+L'indice di ottimizzazione va da 0 a 100. Pesi: agenti light 1, medium 2, high 3, opus 5; chat Haiku 1, Sonnet 2, altro 5. Verde da 50, giallo da 20. Il risparmio mostra i token fatti dagli agenti light, medium e high con la percentuale sul totale.
+
+"↺ nuovo workflow" chiede conferma (OK / annulla); la domanda sparisce dopo 6 secondi. Il reset non cancella la chat, riparte solo la vista workflow.
+
+Lingue: italiano (predefinita), inglese, tedesco, francese, spagnolo, da scegliere nella guida; "? guida" apre una breve spiegazione.
+
+I dati si aggiornano al massimo ogni 8 secondi e sono letti dalle trascrizioni locali, senza rete. I prezzi sono in `~/.config/onmake-gear/prezzi.json`.
+
+Pannello: `python3 onmake-gear/scripts/pannello.py --cartella DIR [--sessione ID] [--json | --html FILE]`, oppure `/gear-pannello`.
 
 **Riga di stato.** Mostra la marcia attuale, es. `⚙ LIGHT ▼` (freccia = ultimo salto su/giù, `⚙ –` = nessun sotto-agente gear). L'app desktop non la mostra; nel terminale si attiva così: in `~/.claude/settings.json` metti `statusLine` = `{"type":"command","command":"python3 /percorso/onmake-gear/scripts/statusline.py"}`.
 
