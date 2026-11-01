@@ -7,7 +7,7 @@ import type { Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.43'
+const VERSIONE = '0.6.44'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -146,6 +146,26 @@ function svgAgente(x: { stato: string; liv: string; nome: string; dir: string; m
 function svgScritta(s: string, col?: string) {
   const w = Math.ceil(largo(s) * 1.08 + 8)
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="18" viewBox="0 0 ${w} 18">${STILE}<text x="0" y="13"${col ? ` style="fill:${col}"` : ' class="mu"'}>${esc(s)}</text></svg>`, width: w }
+}
+
+// Bar of where the session tokens went: main chat and each gear's agents, with the share of each.
+function svgBarra(pl: Record<string, [number, number]>, tot: number, tinta: boolean) {
+  const W = 380
+  const liv = ['light', 'medium', 'high', 'opus']
+  const ag = liv.reduce((a, k) => a + (pl[k]?.[1] ?? 0), 0)
+  const parti: [string, number, string][] = [['chat', Math.max(0, tot - ag), '#c0714f'], ...liv.map(k => [k.toUpperCase(), pl[k]?.[1] ?? 0, COL[k]] as [string, number, string])]
+  let x = 0, lx = 0
+  const out: string[] = [`<text x="0" y="10" class="mu sm">token della sessione per chi li ha usati</text>`, `<rect x="0" y="16" width="${W}" height="10" rx="3" class="v"/>`]
+  for (const [nome, n, col] of parti) {
+    if (!tot || !n) continue
+    const w = Math.max(2, n / tot * W)
+    out.push(`<rect x="${x.toFixed(1)}" y="16" width="${w.toFixed(1)}" height="10" style="fill:${tinta ? col : GRIGIO}"/>`)
+    x += w
+    const s = `${nome} ${(n / tot * 100).toFixed(1).replace('.', ',')}%`
+    out.push(`<rect x="${lx}" y="33" width="8" height="8" rx="2" style="fill:${tinta ? col : GRIGIO}"/><text x="${lx + 12}" y="41" class="sm mu">${s}</text>`)
+    lx += 12 + largo(s) * 0.9 + 14
+  }
+  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="46" viewBox="0 0 ${W} 46">${STILE}${out.join('')}</svg>`, width: W }
 }
 
 // Grid of the 4 gears: colour, name, agents used and their tokens in this session.
@@ -437,6 +457,7 @@ export const register: Register = (on, options) => {
           {desk ? scritta(r1) : <Text dimColor>{r1}</Text>}
           {desk ? scritta(r3) : <Text dimColor>{r3}</Text>}
           {r4 ? (desk ? scritta(r4) : <Text dimColor>{r4}</Text>) : null}
+          {desk && (d.stok || d.tok) ? (() => { const g = svgBarra(d.perliv ?? {}, d.stok || d.tok, tinta); return <Svg source={g.source} alt="token della sessione per chi li ha usati" width={g.width} height={46} /> })() : null}
         </Box>
         {desk ? (() => { const g = svgGriglia(d.perliv ?? {}, tinta, d.livello); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={84} /></Box> })() : null}
         </Box>
