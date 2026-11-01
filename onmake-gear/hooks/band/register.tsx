@@ -7,7 +7,7 @@ import type { Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.44'
+const VERSIONE = '0.6.45'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -94,7 +94,7 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null) {
   if (d.tokmod && d.tokmod.length > 0) { sep(); d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); t(nomeModello(m).split(' ')[0], '', tinta ? colMod(m) : undefined); sp(4); t(`${kt(n)} token`) }) }
   else if (d.tok > 0) { sep(); t(`${kt(d.tok)} token`, 'mu') }
   // Whole session: all tokens so far and how many agents it has used.
-  if (d.stok) { sep(); t('sessione', 'mu'); sp(4); t(`${kt(d.stok)} token`); if (d.sag) { sp(6); t(`${d.sag} agenti`, 'mu') } }
+  if (d.stok) { sep(); t('questa chat', 'mu'); sp(4); t(`${kt(d.stok)} token`); if (d.sag) { sp(6); t(`${d.sag} agenti`, 'mu') } }
   if (!compact) {
     // Only what is useful now: the current job (since your last message); counts at zero and a missing task list are left out.
     const n: [number, string, string | undefined][] = [[d.lavorano, '▶', COL.medium], [d.fermi, '⏸', COL.high], [d.completi, '✓', undefined], [d.interrotti, '✗', undefined]]
@@ -155,7 +155,7 @@ function svgBarra(pl: Record<string, [number, number]>, tot: number, tinta: bool
   const ag = liv.reduce((a, k) => a + (pl[k]?.[1] ?? 0), 0)
   const parti: [string, number, string][] = [['chat', Math.max(0, tot - ag), '#c0714f'], ...liv.map(k => [k.toUpperCase(), pl[k]?.[1] ?? 0, COL[k]] as [string, number, string])]
   let x = 0, lx = 0
-  const out: string[] = [`<text x="0" y="10" class="mu sm">token della sessione per chi li ha usati</text>`, `<rect x="0" y="16" width="${W}" height="10" rx="3" class="v"/>`]
+  const out: string[] = [`<text x="0" y="10" class="mu sm">token di questa chat per chi li ha usati</text>`, `<rect x="0" y="16" width="${W}" height="10" rx="3" class="v"/>`]
   for (const [nome, n, col] of parti) {
     if (!tot || !n) continue
     const w = Math.max(2, n / tot * W)
@@ -287,6 +287,7 @@ async function aggiorna($: EngineInterface, below: boolean, compact: boolean) {
   if (now - last < 15000) return
   last = now
   const d = await ricarica($).catch(() => undefined)
+  if (!d) last = 0 // a failed read retries at the next turn instead of keeping old numbers
   if (below && d) $.ui.status(riga(d, compact))
 }
 
@@ -430,10 +431,10 @@ export const register: Register = (on, options) => {
     if (d.tot > 0) parti.push(`passi ${d.fatti} di ${d.tot}`)
     const r1 = parti.join(' · ')
     // Whole session, and the cost estimate (same tokens all in Opus as the reference).
-    const r3 = [d.sel ? `sessione attiva da ${dur(d.sel)}` : 'sessione', d.stok ? `${kt(d.stok)} token` : '', d.sag ? `${d.sag} agenti` : '', d.cr ? `cache riletta ${kt(d.cr)} token` : ''].filter(Boolean).join(' · ')
+    const r3 = [d.sel ? `questa chat attiva da ${dur(d.sel)}` : 'questa chat', d.stok ? `${kt(d.stok)} token` : '', d.sag ? `${d.sag} agenti` : '', d.cr ? `cache riletta ${kt(d.cr)} token` : ''].filter(Boolean).join(' · ')
     // Saving in tokens, not money: tokens the agents did on models lower than Opus, and their share of the session.
     const bassi = ['light', 'medium', 'high'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0), 0)
-    const r4 = bassi > 0 ? `risparmio: ${kt(bassi)} token fatti da modelli più bassi di Opus${d.stok ? ` (${(bassi / d.stok * 100).toFixed(1).replace('.', ',')}% della sessione)` : ''}` : ''
+    const r4 = bassi > 0 ? `risparmio: ${kt(bassi)} token fatti da modelli più bassi di Opus${d.stok ? ` (${(bassi / d.stok * 100).toFixed(1).replace('.', ',')}% di questa chat)` : ''}` : ''
     const r2 = d.righe.length === 0 && d.interrotti === 0 ? 'Nessun agente: lavora solo la chat.' : ''
     const icona: Record<string, string> = { lavora: '▶', fermo: '⏸', completato: '✓' }
 
@@ -457,7 +458,7 @@ export const register: Register = (on, options) => {
           {desk ? scritta(r1) : <Text dimColor>{r1}</Text>}
           {desk ? scritta(r3) : <Text dimColor>{r3}</Text>}
           {r4 ? (desk ? scritta(r4) : <Text dimColor>{r4}</Text>) : null}
-          {desk && (d.stok || d.tok) ? (() => { const g = svgBarra(d.perliv ?? {}, d.stok || d.tok, tinta); return <Svg source={g.source} alt="token della sessione per chi li ha usati" width={g.width} height={46} /> })() : null}
+          {desk && (d.stok || d.tok) ? (() => { const g = svgBarra(d.perliv ?? {}, d.stok || d.tok, tinta); return <Svg source={g.source} alt="token di questa chat per chi li ha usati" width={g.width} height={46} /> })() : null}
         </Box>
         {desk ? (() => { const g = svgGriglia(d.perliv ?? {}, tinta, d.livello); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={84} /></Box> })() : null}
         </Box>
