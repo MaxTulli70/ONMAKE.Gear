@@ -49,8 +49,8 @@ function riga(d: Dati, compact: boolean) {
 // shortcut: text widths are estimated (7.4 px per character at 13 px), so a very long label may sit a little loose.
 const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 // Width per character at 14 px: capitals and digits are wider than lower case, spaces narrower.
-const largo = (t: string) => Math.ceil([...t].reduce((w, ch) => w + (ch === ' ' ? 4.1 : /[A-Z0-9%]/.test(ch) ? 9.5 : /[▶⏸✓✗↓↑]/.test(ch) ? 12 : 7.8), 0))
-const STILE = '<style>text{font:400 14px -apple-system,system-ui,sans-serif;fill:#55554f}.sm{font-size:12px;letter-spacing:.3px}.mu{fill:#8a8a84}.v{fill:#d6d6cf}@media(prefers-color-scheme:dark){text{fill:#c9c9d1}.mu{fill:#8d8d97}.v{fill:#3a3a42}}</style>'
+const largo = (t: string) => Math.ceil([...t].reduce((w, ch) => w + (ch === ' ' ? 3.5 : /[A-Z0-9%]/.test(ch) ? 8.2 : /[▶⏸✓✗↓↑]/.test(ch) ? 10.3 : 6.7), 0))
+const STILE = '<style>text{font:400 12px -apple-system,system-ui,sans-serif;fill:#55554f}.sm{font-size:10px;letter-spacing:.3px}.mu{fill:#8a8a84}.v{fill:#d6d6cf}@media(prefers-color-scheme:dark){text{fill:#c9c9d1}.mu{fill:#8d8d97}.v{fill:#3a3a42}}</style>'
 
 function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null) {
   const out: string[] = []
@@ -85,7 +85,7 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null) {
   // The model the chat is using now, e.g. 'opus-5-5' -> 'Opus 5.5'.
   // Model and effort the chat is using now, then the tokens of the current job per model.
   const mod = p?.model || d.chat
-  if (mod) { sep(); t('chat', 'mu'); sp(5); t(nomeModello(mod)); if (p?.effort) { sp(5); t(`effort ${p.effort}`, 'mu') } }
+  if (mod) { sep(); t('chat', 'mu'); sp(5); t(nomeModello(mod)); if (p?.effort) { sp(5); t(p.effort, 'mu') } }
   // Tokens of the current job per model; nothing while the job has used none yet.
   if (d.tokmod && d.tokmod.length > 0) { sep(); d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); t(nomeModello(m).split(' ')[0], 'mu'); sp(4); t(kt(n)) }) }
   else if (d.tok > 0) { sep(); t(`${kt(d.tok)} tok`, 'mu') }
@@ -182,7 +182,7 @@ async function caricaSessioni($: EngineInterface) {
   try {
     const r = await $.tool.call({ tool: 'mcp__ccd_session_mgmt__list_sessions' } as never)
     const l = elenco(r)
-    await update($, sessioni, () => l)
+    await update($, sessioni, () => l.sort((a, b) => a.nome.localeCompare(b.nome, "it", { sensitivity: "base" })))
     if (l.length > 0 && (await read($, scelta)) === '') await update($, scelta, () => l[0].id)
   } catch (err) {
     $.ui.toast(`Gear: sessioni non lette (${String(err).slice(0, 60)})`)
