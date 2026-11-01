@@ -85,11 +85,6 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean) {
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${H}" viewBox="0 0 ${w} ${H}">${STILE}${out.join('')}</svg>`, width: w }
 }
 
-function svgTasto(s: string, col?: string) {
-  const w = largo(s) + 4
-  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="22" viewBox="0 0 ${w} 22">${STILE}<text x="2" y="15"${col ? ` style="fill:${col}"` : ' class="mu"'}>${esc(s)}</text></svg>`, width: w }
-}
-
 // ONMAKE hexagon logo (assets/onmake-logo.svg), vector so it stays sharp at 19 px; a press opens the site.
 const LOGO = `<svg xmlns="http://www.w3.org/2000/svg" width="19" height="22" viewBox="0 -9 100 122"><defs> <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"> <stop offset="0" stop-color="#8fbc7c"/><stop offset="0.45" stop-color="#6aa057"/><stop offset="1" stop-color="#5f9a4e"/> </linearGradient> <linearGradient id="f" x1="0" y1="0" x2="1" y2="1"> <stop offset="0" stop-color="#4a4a48"/><stop offset="1" stop-color="#2f2f2e"/> </linearGradient> </defs> <path d="M50 3 L92.4 27.5 Q94 28.4 94 30.3 L94 73.7 Q94 75.6 92.4 76.5 L50 101 L7.6 76.5 Q6 75.6 6 73.7 L6 30.3 Q6 28.4 7.6 27.5 Z" fill="url(#f)"/> <path d="M50 12.5 L85.5 33 L85.5 71 L50 91.5 L14.5 71 L14.5 33 Z" fill="url(#g)" stroke="#6b6b69" stroke-width="0.8"/> <path d="M14.5 33 L50 12.5 L85.5 33 L85.5 40 Q50 32 14.5 66 Z" fill="#ffffff" opacity="0.12"/> <text x="50" y="58" text-anchor="middle" font-family="Futura, 'Avenir Next', 'Century Gothic', system-ui, sans-serif" font-weight="600" font-size="15.5" textLength="66" lengthAdjust="spacingAndGlyphs" fill="#363634">ONMAKE</text></svg>`
 const SITO = 'https://www.onmake.it'
@@ -228,9 +223,8 @@ export const register: Register = (on, options) => {
     const desk = e.surface === 'desktop'
     const { Svg } = $.ui.resolve(e) as unknown as { Svg: (p: { source: string; alt: string; width?: number; height?: number }) => JSX.Element }
     const tasto = (k: string, s: string, fn: () => unknown, col?: string) => {
-      if (!desk) return <Button key={k} plain onPress={fn}><Text color={col} dimColor={!col}>{s}</Text></Button>
-      const g = svgTasto(s, col)
-      return <Button key={k} plain onPress={fn}><Svg source={g.source} alt={s} width={g.width} height={22} /></Button>
+      // A Button holds only strings and Text (an Svg inside is refused), so its label is Text on every surface.
+      return <Button key={k} plain onPress={fn}><Text color={col} dimColor={!col}>{s}</Text></Button>
     }
     const riga1 = svgRiga(d, tinta, compact)
     const testaDesk = (
@@ -239,8 +233,9 @@ export const register: Register = (on, options) => {
           <Svg source={riga1.source} alt={riga(d, compact)} width={riga1.width} height={22} />
         </Box>
         <Box flexShrink={0} flexDirection="row" gap={1} alignItems="center">
+          <Svg source={LOGO} alt="ONMAKE" width={19} height={22} />
           <Button key="onmake" plain onPress={() => apriSito($).catch(() => $.ui.toast('Gear: sito non aperto'))}>
-            <Svg source={LOGO} alt="ONMAKE, apre onmake.it" width={19} height={22} />
+            <Text dimColor>onmake.it</Text>
           </Button>
           {tasto('tendina', open ? 'Chiudi ▴' : 'Dettagli ▾', () => apriChiudi($))}
           {tasto('pannello', 'Pannello ↗', () => apriPannello($).catch(() => $.ui.toast('Gear: pannello non aperto')))}
