@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.87'
+const VERSIONE = '0.6.88'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -734,6 +734,7 @@ export const register: Register = (on, options) => {
   const compact = options.compact === true
 
   on('session.start', async ($, e, next) => {
+    await update($, comando, v => v === 'reset?' ? '' : v).catch(() => {})
     await $.command.register({ name: 'gear-pannello', description: 'Open the Gear panel: agents, progress, tokens, saving' })
     void aggiorna($, below, compact)
     return next(e)
@@ -975,7 +976,7 @@ export const register: Register = (on, options) => {
         {pill('tot', tr('totale chat'))}
         {chiede
           ? <Box flexDirection="row" gap={2}>{piccolo('q', tr('azzerare il workflow da adesso?'), () => undefined)}{piccolo('ok', tr('OK'), async () => { await update($, comando, () => ''); await azzera() }, COL.high)}{piccolo('no', tr('annulla'), () => update($, comando, () => ''))}</Box>
-          : piccolo('reset', tr('↺ nuovo workflow'), () => update($, comando, () => 'reset?'))}
+          : piccolo('reset', tr('↺ nuovo workflow'), () => { void update($, comando, () => 'reset?'); $.clock.after(6000, () => update($, comando, v => v === 'reset?' ? '' : v)) })}
       </Box>
     )
 
