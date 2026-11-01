@@ -7,7 +7,7 @@ import type { Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.47'
+const VERSIONE = '0.6.48'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -32,7 +32,8 @@ async function home($: EngineInterface) {
 async function ricarica($: EngineInterface) {
   const script = `${$.plugin.root}/scripts/pannello.py`
   // Workflow view: only what came after the partial reset (or after the start, if never reset).
-  const da = (await read($, vista).catch(() => 'tot')) === 'wf' ? await read($, reset).catch(() => '') : ''
+  const vv = await read($, vista).catch(() => 'tot')
+  const da = vv === 'wf' ? await read($, reset).catch(() => '') : vv === 'live' ? inizioTurno : ''
   const r = await $.process.run(['python3', script, '--cartella', await $.session.cwd(), '--sessione', await $.session.id(), '--json', ...(da ? ['--da', da] : [])])
   if (r.exitCode !== 0) return undefined
   const d = JSON.parse(r.stdout) as Dati
@@ -147,6 +148,11 @@ function svgAgente(x: { stato: string; liv: string; nome: string; dir: string; m
 }
 
 // A plain label drawn like the bar, so it has the bar's text size.
+function svgPillola(s: string, on: boolean) {
+  const w = Math.ceil(largo(s) * 1.08 + 20)
+  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="22" viewBox="0 0 ${w} 22">${STILE}<rect x="0.5" y="0.5" width="${w - 1}" height="21" rx="10.5" style="fill:${on ? '#55554f' : 'none'};stroke:${on ? '#55554f' : '#c9c9c2'}"/><text x="${w / 2}" y="15" text-anchor="middle"${on ? ' style="fill:#ffffff"' : ' class="mu"'}>${esc(s)}</text></svg>`, width: w }
+}
+
 function svgScritta(s: string, col?: string) {
   const w = Math.ceil(largo(s) * 1.08 + 8)
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="18" viewBox="0 0 ${w} 18">${STILE}<text x="0" y="13"${col ? ` style="fill:${col}"` : ' class="mu"'}>${esc(s)}</text></svg>`, width: w }
@@ -284,6 +290,7 @@ async function apriChiudi($: EngineInterface) {
 }
 
 let last = 0
+let inizioTurno = '' // start of the current turn, for the live view
 
 // At most one run every 15 s: a long transcript takes a couple of seconds to read.
 async function aggiorna($: EngineInterface, below: boolean, compact: boolean) {
@@ -312,7 +319,7 @@ export const register: Register = (on, options) => {
 
   // turn.step streams, so the hook is a generator that passes every chunk through untouched.
   on('turn.start', ($, e, next) => {
-    if (e.agentId === undefined) turnoId = e.turnId
+    if (e.agentId === undefined) { turnoId = e.turnId; void $.clock.now().then(t => { inizioTurno = new Date(t).toISOString() }) }
     return next(e)
   })
 
@@ -321,6 +328,8 @@ export const register: Register = (on, options) => {
       const v = { model: e.model, effort: e.effort === undefined ? '' : String(e.effort) }
       const was = await read($, passo).catch(() => null)
       if (!was || was.model !== v.model || was.effort !== v.effort) await update($, passo, () => v).catch(() => undefined)
+      // live view: refresh while the turn runs too (still at most every 15 s)
+      if ((await read($, vista).catch(() => 'tot')) === 'live') void aggiorna($, below, compact)
     }
     return yield* next(e)
   })
@@ -437,10 +446,10 @@ export const register: Register = (on, options) => {
     if (d.tot > 0) parti.push(`passi ${d.fatti} di ${d.tot}`)
     const r1 = parti.join(' · ')
     // Whole session, and the cost estimate (same tokens all in Opus as the reference).
-    const r3 = [`${v === 'wf' ? 'workflow' : 'chat'}${d.sel ? ' attiva ' + dur(d.sel) : ''}`, d.stok ? `${kt(d.stok)} token` : '', d.sag ? `${d.sag} agenti` : '', d.cr ? `cache ${kt(d.cr)}` : ''].filter(Boolean).join(' · ')
+    const r3 = [`${v === 'wf' ? 'workflow' : v === 'live' ? 'live' : 'chat'}${d.sel ? ' attiva ' + dur(d.sel) : ''}`, d.stok ? `${kt(d.stok)} token` : '', d.sag ? `${d.sag} agenti` : '', d.cr ? `cache ${kt(d.cr)}` : ''].filter(Boolean).join(' · ')
     // Saving in tokens, not money: tokens the agents did on models lower than Opus, and their share of the session.
     const bassi = ['light', 'medium', 'high'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0), 0)
-    const r4 = bassi > 0 ? `risparmio: ${kt(bassi)} token fatti da modelli più bassi di Opus${d.stok ? ` (${bassi / d.stok < 0.001 ? 'meno dello 0,1' : (bassi / d.stok * 100).toFixed(1).replace('.', ',')}% ${v === 'wf' ? 'del workflow' : 'della chat'})` : ''}` : ''
+    const r4 = bassi > 0 ? `risparmio: ${kt(bassi)} token fatti da modelli più bassi di Opus${d.stok ? ` (${bassi / d.stok < 0.001 ? 'meno dello 0,1' : (bassi / d.stok * 100).toFixed(1).replace('.', ',')}% ${v === 'wf' ? 'del workflow' : v === 'live' ? 'del turno' : 'della chat'})` : ''}` : ''
     // Optimization index 0-100: how low the work ran. Weight per token: Haiku 1, Sonnet 2 (high 3), Opus 5; 0 = all Opus, 100 = all Haiku.
     const W: Record<string, number> = { light: 1, medium: 2, high: 3, opus: 5 }
     const pesoChat = /haiku/.test(d.chat) ? 1 : /sonnet/.test(d.chat) ? 2 : 5
@@ -454,11 +463,24 @@ export const register: Register = (on, options) => {
 
     const scegli = async (x: string) => { await update($, vista, () => x); last = 0; await ricarica($).catch(() => undefined) }
     const azzera = async () => { const ora = new Date(await $.clock.now()).toISOString(); await update($, reset, () => ora); await scegli('wf'); $.ui.toast('Gear: workflow azzerato da adesso') }
+    const pill = (k: string, s: string) => {
+      if (!desk) return tasto(k, v === k ? `[${s}]` : s, () => scegli(k))
+      const g = svgPillola(s, v === k)
+      return (
+        <Box key={k} position="relative">
+          <Svg source={g.source} alt={s} width={g.width} height={22} />
+          <Box position="absolute" top={0} left={0} right={0} bottom={0} justifyContent="center" alignItems="center" overflow="hidden">
+            <Button key={k} plain onPress={() => scegli(k)}><Text>{'\u2002'}</Text></Button>
+          </Box>
+        </Box>
+      )
+    }
     const sel = (
-      <Box flexDirection="row" gap={2} alignItems="center">
-        {tastino('tot', v === 'tot' ? '● totale chat' : '○ totale chat', () => scegli('tot'), v === 'tot' ? '#55554f' : undefined)}
-        {tastino('wf', v === 'wf' ? `● workflow${rs ? ' da ' + new Date(rs).toTimeString().slice(0, 5) : ''}` : `○ workflow${rs ? ' da ' + new Date(rs).toTimeString().slice(0, 5) : ''}`, () => scegli('wf'), v === 'wf' ? '#55554f' : undefined)}
-        {tastino('reset', '↺ reset', azzera)}
+      <Box flexDirection="row" gap={1} alignItems="center">
+        {pill('live', '● live')}
+        {pill('wf', rs ? `workflow da ${new Date(rs).toTimeString().slice(0, 5)}` : 'workflow')}
+        {pill('tot', 'totale chat')}
+        {tastino('reset', '↺ nuovo workflow', azzera)}
       </Box>
     )
 
