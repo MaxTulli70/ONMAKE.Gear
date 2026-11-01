@@ -1,8 +1,34 @@
 {
  "name": "onmake-gear",
- "version": "0.2.13",
- "description": "ONMAKE Gear: the right model at the right moment, effort matched to the task, short peaks, STATO.md and REVERSE to save tokens without losing quality. / Il modello giusto al momento giusto, effort allineato al compito.",
+ "version": "0.6.0",
+ "description": "ONMAKE Gear: the right model at the right moment, effort matched to the task, short peaks, STATO.md and REVERSE to save tokens without losing quality. / Il modello giusto al momento giusto, effort allineato al compito. Bar by the prompt and local graphic panel. / Barra vicino al campo di scrittura e pannello grafico.",
  "hooks": [
-  "./hooks/hooks.json"
- ]
+  "./hooks/hooks.json",
+  "./hooks/band.json"
+ ],
+ "types": "./types/index.d.ts",
+ "userConfig": {
+  "position": {
+   "type": "string",
+   "title": "Position / Posizione",
+   "description": "above: bar above the prompt (colors, dropdown, buttons). below: one plain line in the status line under the prompt.",
+   "options": [
+    "above",
+    "below"
+   ],
+   "default": "above"
+  },
+  "compact": {
+   "type": "boolean",
+   "title": "Compact / Discreta",
+   "description": "Short bar: level and tokens only. Off: also agents, work % and time.",
+   "default": false
+  },
+  "colors": {
+   "type": "boolean",
+   "title": "Colors / Colori",
+   "description": "Color the gear level (LIGHT blue, MEDIUM green, HIGH amber, OPUS violet, MAX red).",
+   "default": true
+  }
+ }
 }

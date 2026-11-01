@@ -1,6 +1,6 @@
 ---
 name: visore
-description: Show the gear changing live: a self-refreshing HTML timeline (lanes LIGHT, MEDIUM, HIGH, MAX, arrows for up/down shifts) built from the session's gear sub-agents. / Mostra la marcia che cambia: linea del tempo HTML che si ricarica da sola, con una corsia per livello e frecce di salita e discesa.
+description: Show the gear changing live: a self-refreshing HTML timeline (lanes LIGHT, MEDIUM, HIGH, OPUS, MAX, arrows for up/down shifts) built from the session's gear sub-agents. / Mostra la marcia che cambia: linea del tempo HTML che si ricarica da sola, con una corsia per livello e frecce di salita e discesa.
 ---
 
 Run / Lancia: `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/visore.py [--sessione ID|file.jsonl] [--terminale] [file.html]`

@@ -6,8 +6,27 @@ import argparse, glob, html, json, os, re, sys
 from datetime import datetime
 
 OUT = "/Volumes/M2/Archivio-APP/APP-Max/Claude Code files/gear-visore.html"
-LIV = ["light", "medium", "high", "max"]
-EFFORT = {"light": "low", "medium": "medium", "high": "high", "max": "max"}  # = agents/gear-*.md
+LIV = ["light", "medium", "high", "opus", "max"]
+AG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "agents")
+
+def livello(tipo):
+    """'onmake-gear:gear-editor' -> 'medium': la marcia viene da modello ed effort scritti nel file dell'agente."""
+    try:
+        t = open(os.path.join(AG, tipo.split(":")[-1] + ".md")).read(800)
+    except OSError:
+        return None
+    m = re.search(r"^model: *(\w+)", t, re.M)
+    e = re.search(r"^effort: *(\w+)", t, re.M)
+    m, e = (m.group(1) if m else ""), (e.group(1) if e else "")
+    if m == "haiku":
+        return "light"
+    if m == "sonnet":
+        return "high" if e in ("high", "max") else "medium"
+    if m == "opus":
+        return "max" if e == "max" else "opus"
+    return None
+
+EFFORT = {"light": "low", "medium": "medium", "high": "high", "opus": "high", "max": "max"}  # = agents/gear-*.md
 
 def tempo(s):
     try:
@@ -58,7 +77,7 @@ def agenti(sess):
         tipo = meta.get("agentType", "")
         if not tipo.startswith("onmake-gear:gear-"):
             continue
-        liv = tipo.split("gear-")[-1]
+        liv = livello(tipo)
         if liv not in LIV:
             continue
         model, tok, a, b = letto(sa)
@@ -89,7 +108,8 @@ def pagina(ag, sess):
     ok = [x for x in ag if x["a"] and x["b"]]
     su, giu = sum(x["dir"] == "▲" for x in ag), sum(x["dir"] == "▼" for x in ag)
     att = ag[-1]["liv"].upper() if ag else "-"
-    W, H, L = 1000, 320, 80  # lane alta 80, ordine dall'alto MAX..LIGHT
+    W, L = 1000, 80  # lane alta 80, ordine dall'alto MAX..LIGHT
+    H = L * len(LIV)
     svg, righe = [], []
     if ok:
         t0, t1 = min(x["a"] for x in ok), max(x["b"] for x in ok)
@@ -100,7 +120,7 @@ def pagina(ag, sess):
                 continue
             xs = (x["a"] - t0).total_seconds() / span * (W - 40) + 20
             w = max((x["b"] - x["a"]).total_seconds() / span * (W - 40), 14)
-            y = (3 - LIV.index(x["liv"])) * L + 20
+            y = (len(LIV) - 1 - LIV.index(x["liv"])) * L + 20
             pos[n] = (xs, w, y)
         for i, nome in enumerate(reversed(LIV)):
             svg.append(f'<rect x="0" y="{i*L}" width="{W}" height="{L}" class="lane l{i%2}"/><text x="6" y="{i*L+14}" class="lab">{nome.upper()}</text>')
@@ -126,12 +146,12 @@ def pagina(ag, sess):
     vuoto = "" if ag else "<p>Nessun sotto-agente gear in questa sessione.</p>"
     return f"""<!doctype html><html lang="it"><head><meta charset="utf-8"><meta http-equiv="refresh" content="3">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Gear Visore</title><style>
-:root{{--bg:#fafaf7;--fg:#1c1c1a;--mu:#6b6b66;--l0:#eeeee8;--l1:#e4e4dc;--light:#7bb8e8;--medium:#6fc08a;--high:#e8b64a;--max:#d9694f;--up:#c2410c;--dn:#15803d;--eq:#888}}
-@media(prefers-color-scheme:dark){{:root{{--bg:#16161a;--fg:#ececf0;--mu:#9a9aa5;--l0:#1d1d22;--l1:#25252b;--light:#3b7fb8;--medium:#3f9a62;--high:#b88a24;--max:#b0452d;--up:#fb923c;--dn:#4ade80}}}}
+:root{{--bg:#fafaf7;--fg:#1c1c1a;--mu:#6b6b66;--l0:#eeeee8;--l1:#e4e4dc;--light:#7bb8e8;--medium:#6fc08a;--high:#e8b64a;--opus:#a78bd0;--max:#d9694f;--up:#c2410c;--dn:#15803d;--eq:#888}}
+@media(prefers-color-scheme:dark){{:root{{--bg:#16161a;--fg:#ececf0;--mu:#9a9aa5;--l0:#1d1d22;--l1:#25252b;--light:#3b7fb8;--medium:#3f9a62;--high:#b88a24;--opus:#7d64a8;--max:#b0452d;--up:#fb923c;--dn:#4ade80}}}}
 body{{margin:0 auto;max-width:1040px;padding:16px;background:var(--bg);color:var(--fg);font:14px system-ui,sans-serif}}
 h1{{font-size:20px;margin:0 0 4px}} .top{{display:flex;gap:24px;flex-wrap:wrap;margin:12px 0}} .top b{{font-size:22px;display:block}}
 .top span{{color:var(--mu);font-size:12px}} svg{{width:100%;height:auto;display:block}} .lane.l0{{fill:var(--l0)}} .lane.l1{{fill:var(--l1)}}
-.lab{{fill:var(--mu);font-size:11px}} .n{{fill:#111;font-size:12px;font-weight:600}} .b.light{{fill:var(--light)}} .b.medium{{fill:var(--medium)}} .b.high{{fill:var(--high)}} .b.max{{fill:var(--max)}}
+.lab{{fill:var(--mu);font-size:11px}} .n{{fill:#111;font-size:12px;font-weight:600}} .b.light{{fill:var(--light)}} .b.medium{{fill:var(--medium)}} .b.high{{fill:var(--high)}} .b.opus{{fill:var(--opus)}} .b.max{{fill:var(--max)}}
 .ar{{stroke-width:2;fill:none}} .ar.up{{stroke:var(--up)}} .ar.dn{{stroke:var(--dn)}} .ar.eq{{stroke:var(--eq)}}
 table{{border-collapse:collapse;width:100%;margin-top:12px;font-size:13px}} td,th{{padding:4px 6px;border-bottom:1px solid var(--l1);text-align:left}}
 td.up{{color:var(--up)}} td.dn{{color:var(--dn)}} td.eq{{color:var(--eq)}} .nota,small{{color:var(--mu)}} .wrap{{overflow-x:auto}}
