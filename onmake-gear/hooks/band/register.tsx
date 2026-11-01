@@ -184,15 +184,28 @@ function elenco(r: unknown): Sessione[] {
   }
   if (v && !Array.isArray(v) && typeof v === 'object') v = Object.values(v as object).find(Array.isArray) ?? []
   return (v as Record<string, unknown>[])
-    .map(x => ({ id: String(x.session_id ?? x.sessionId ?? x.id ?? ''), nome: String(x.title ?? x.name ?? x.session_id ?? x.id ?? '').slice(0, 40) }))
+    .map(x => ({ id: String(x.session_id ?? x.sessionId ?? x.id ?? ''), nome: String(x.title ?? x.name ?? x.session_id ?? x.id ?? '').slice(0, 40), padre: String(x.startedBy ?? ''), fissata: x.pinned === true }))
     .filter(x => x.id !== '')
+}
+
+// Like the sidebar: pinned first, then by name; a session started by another sits under it with └.
+function albero(l: (Sessione & { padre: string; fissata: boolean })[]): Sessione[] {
+  const ids = new Set(l.map(x => x.id))
+  const ord = (a: { nome: string; fissata: boolean }, b: { nome: string; fissata: boolean }) => Number(b.fissata) - Number(a.fissata) || a.nome.localeCompare(b.nome, 'it', { sensitivity: 'base' })
+  const out: Sessione[] = []
+  const giu = (padre: string, liv: number) => l.filter(x => (liv === 0 ? !ids.has(x.padre) : x.padre === padre)).sort(ord).forEach(x => {
+    out.push({ id: x.id, nome: (liv ? '\u2003'.repeat(liv - 1) + '└ ' : '') + x.nome })
+    if (liv < 4) giu(x.id, liv + 1)
+  })
+  giu('', 0)
+  return out
 }
 
 async function caricaSessioni($: EngineInterface) {
   try {
-    const r = await $.tool.call({ tool: 'mcp__ccd_session_mgmt__list_sessions' } as never)
-    const l = elenco(r)
-    await update($, sessioni, () => l.sort((a, b) => a.nome.localeCompare(b.nome, "it", { sensitivity: "base" })))
+    const r = await $.tool.call({ tool: 'mcp__ccd_session_mgmt__list_sessions', limit: 100 } as never)
+    const l = albero(elenco(r))
+    await update($, sessioni, () => l)
     if (l.length > 0 && (await read($, scelta)) === '') await update($, scelta, () => l[0].id)
   } catch (err) {
     $.ui.toast(`Gear: sessioni non lette (${String(err).slice(0, 60)})`)
@@ -389,11 +402,8 @@ export const register: Register = (on, options) => {
           {tastino('ferma', 'Ferma', () => azione($, 'ferma'), c('max'))}
           {tastino('riprendi', 'Riprendi', () => azione($, 'riprendi'), c('medium'))}
         </Box>
-        <Box width={e.props.bodyColumns} flexDirection="row" gap={1} alignItems="flex-start">
-          {desk ? <Box flexShrink={0}>{scritta('Comando')}</Box> : null}
-          <Box flexGrow={1} flexShrink={1} flexDirection="column" alignItems="stretch">
-          <Input key="comando" rows={2} label={desk ? '' : 'Comando'} placeholder="Comando per la sessione scelta ↵" value={cmd} submitLabel="↵" onInput={v => void update($, comando, () => v)} onSubmit={v => void azione($, 'invia', v)} />
-          </Box>
+        <Box width={e.props.bodyColumns} flexDirection="column">
+          <Input key="comando" rows={1} label={desk ? '' : 'Comando'} placeholder="Comando per la sessione scelta, poi Invio ↵" value={cmd} submitLabel="↵" onInput={v => void update($, comando, () => v)} onSubmit={v => void azione($, 'invia', v)} />
         </Box>
       </Box>,
     )
