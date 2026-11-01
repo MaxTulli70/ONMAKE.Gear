@@ -7,7 +7,7 @@ import type { Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.36'
+const VERSIONE = '0.6.37'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -151,17 +151,19 @@ function svgScritta(s: string, col?: string) {
 // Grid of the 4 gears: colour, name, agents used and their tokens in this session.
 function svgGriglia(pl: Record<string, [number, number]>, tinta: boolean, attuale: string | null) {
   const liv = ['light', 'medium', 'high', 'opus']
+  const mod: Record<string, string> = { light: 'Haiku', medium: 'Sonnet', high: 'Sonnet', opus: 'Opus' }
   const righe = liv.map((k, i) => {
     const [n, tk] = pl[k] ?? [0, 0]
     const y = 30 + i * 18
     const on = attuale === k || (attuale === 'max' && k === 'opus')
     return `<rect x="0" y="${y - 9}" width="8" height="8" rx="2" style="fill:${tinta ? COL[k] : GRIGIO}"/>`
       + `<text x="14" y="${y}" class="sm"${on ? ` style="fill:${tinta ? COL[k] : GRIGIO}"` : ''}>${k.toUpperCase()}</text>`
-      + `<text x="84" y="${y}" class="mu" text-anchor="end">${n}</text>`
-      + `<text x="168" y="${y}"${n ? '' : ' class="mu"'} text-anchor="end">${kt(tk)}</text>`
+      + `<text x="86" y="${y}" class="mu">${mod[k]}</text>`
+      + `<text x="170" y="${y}" class="mu" text-anchor="end">${n}</text>`
+      + `<text x="254" y="${y}"${n ? '' : ' class="mu"'} text-anchor="end">${kt(tk)}</text>`
   })
-  const testa = `<text x="84" y="10" class="mu sm" text-anchor="end">agenti</text><text x="168" y="10" class="mu sm" text-anchor="end">token</text>`
-  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="172" height="92" viewBox="0 0 172 92">${STILE}${testa}${righe.join('')}</svg>`, width: 172 }
+  const testa = `<text x="86" y="10" class="mu sm">modello</text><text x="170" y="10" class="mu sm" text-anchor="end">agenti</text><text x="254" y="10" class="mu sm" text-anchor="end">token</text>`
+  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="258" height="92" viewBox="0 0 258 92">${STILE}${testa}${righe.join('')}</svg>`, width: 258 }
 }
 
 async function apriSito($: EngineInterface) {
