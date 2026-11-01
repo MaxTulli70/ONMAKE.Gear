@@ -17,7 +17,7 @@ const comando = atom({ plugin: 'onmake-gear', key: 'comando' } as const, '')
 
 // 'claude-opus-5-5' or 'opus-5-5' -> 'Opus 5.5'
 const nomeModello = (m: string) => { const [f, ...v] = m.replace(/^claude-/, '').split('-'); return f ? `${f.charAt(0).toUpperCase()}${f.slice(1)} ${v.join('.')}`.trim() : m }
-const kt = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}K` : `${n}`)
+const kt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".")
 const dur = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}h${Math.floor((s % 3600) / 60)}m` : s >= 60 ? `${Math.floor(s / 60)}m` : `${s}s`)
 
 async function home($: EngineInterface) {
@@ -42,7 +42,7 @@ const lev = (d: Dati) => `⚙ ${d.livello ? d.livello.toUpperCase() : '-'}${d.di
 
 // Plain text for the status line (position below); the bar above draws the same parts in color.
 function riga(d: Dati, compact: boolean) {
-  const parts = [lev(d), `${kt(d.tok)} tok`]
+  const parts = [lev(d), `${kt(d.tok)} token`]
   if (!compact) parts.push(ag(d), pct(d), dur(d.el) + (d.eta ? `/${dur(d.el + d.eta)}` : ''))
   return parts.filter(x => x !== '').join(' · ')
 }
@@ -89,8 +89,8 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null) {
   const mod = p?.model || d.chat
   if (mod) { sep(); t('chat', 'mu'); sp(5); t(nomeModello(mod), '', tinta ? colMod(mod, p?.effort) : undefined); if (p?.effort) { sp(5); t(p.effort, 'mu') } }
   // Tokens of the current job per model; nothing while the job has used none yet.
-  if (d.tokmod && d.tokmod.length > 0) { sep(); d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); t(nomeModello(m).split(' ')[0], '', tinta ? colMod(m) : undefined); sp(4); t(kt(n)) }) }
-  else if (d.tok > 0) { sep(); t(`${kt(d.tok)} tok`, 'mu') }
+  if (d.tokmod && d.tokmod.length > 0) { sep(); d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); t(nomeModello(m).split(' ')[0], '', tinta ? colMod(m) : undefined); sp(4); t(`${kt(n)} token`) }) }
+  else if (d.tok > 0) { sep(); t(`${kt(d.tok)} token`, 'mu') }
   if (!compact) {
     // Only what is useful now: the current job (since your last message); counts at zero and a missing task list are left out.
     const n: [number, string, string | undefined][] = [[d.lavorano, '▶', COL.medium], [d.fermi, '⏸', COL.high], [d.completi, '✓', undefined], [d.interrotti, '✗', undefined]]
@@ -130,7 +130,7 @@ function svgAgente(x: { stato: string; liv: string; nome: string; dir: string; m
   px += 10
   if (x.stato === 'fermo') { t(`fermo da ${dur(x.ago)}`, '', tinta ? COL.high : undefined); px += 10 }
   t(nomeModello(x.model), 'mu'); px += 10
-  t(`${kt(x.tok)} tok`, 'mu'); px += 10
+  t(`${kt(x.tok)} token`, 'mu'); px += 10
   t(x.desc, x.stato === 'completato' ? 'mu' : '')
   const w = Math.ceil(px + 2)
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="24" viewBox="0 0 ${w} 24">${STILE}${out.join('')}</svg>`, width: w }
@@ -312,7 +312,7 @@ export const register: Register = (on, options) => {
             {d.livello && tinta
               ? <Text backgroundColor={COL[d.livello]} color="#1c1c1a" bold> {lev(d)} </Text>
               : <Text dimColor bold>{lev(d)}</Text>}
-            {sep}<Text dimColor>{kt(d.tok)} tok</Text>
+            {sep}<Text dimColor>{kt(d.tok)} token</Text>
             {!compact && (
               <Text>
                 {sep}
@@ -353,7 +353,7 @@ export const register: Register = (on, options) => {
           if (!desk) return (
             <Text key={String(i)} wrap="truncate-end" dimColor={x.stato === 'completato'}>
               <Text color={x.stato === 'fermo' ? c('high') : c(x.liv, tinta ? GRIGIO : undefined)}>{icona[x.stato] ?? '·'} {x.nome}{x.dir === '▲' || x.dir === '▼' ? ' ' + x.dir : ''}</Text>
-              <Text dimColor>  {x.stato === 'fermo' ? `fermo da ${dur(x.ago)}  ` : ''}{x.model}  {kt(x.tok)} tok  {x.desc}</Text>
+              <Text dimColor>  {x.stato === 'fermo' ? `fermo da ${dur(x.ago)}  ` : ''}{x.model}  {kt(x.tok)} token  {x.desc}</Text>
             </Text>
           )
           const g = svgAgente(x, tinta)
