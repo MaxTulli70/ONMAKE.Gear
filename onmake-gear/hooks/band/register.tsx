@@ -7,7 +7,7 @@ import type { Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.40'
+const VERSIONE = '0.6.41'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -311,7 +311,7 @@ export const register: Register = (on, options) => {
     if (below || e.props.hasSurvey || d === null) return sotto ?? next(e)
 
     const open = await read($, aperta)
-    const { Box, Text, Button, Input, Select } = $.ui.resolve(e)
+    const { Box, Text, Button } = $.ui.resolve(e)
     const tinta = options.colors !== false
     const c = (k: string | null | undefined, alt?: string) => (tinta ? (k && COL[k]) || alt : undefined)
     const stack = (mine: JSX.Element) => (sotto ? <Box flexDirection="column">{mine}{sotto}</Box> : mine)
@@ -403,7 +403,6 @@ export const register: Register = (on, options) => {
     const testa = desk ? testaDesk : testaTesto
     if (!open) return stack(testa)
 
-    const cmd = await read($, comando)
     const scritta = (s: string) => { const g = svgScritta(s); return <Svg source={g.source} alt={s} width={g.width} height={18} /> }
     // Facts of the current job (since your last message): time active, tokens split chat/agents, steps.
     const tokAg = d.righe.reduce((a, r) => a + (r.tok || 0), 0)
@@ -431,9 +430,6 @@ export const register: Register = (on, options) => {
           return <Box key={String(i)} overflow="hidden"><Svg source={g.source} alt={`${x.nome} ${x.stato} ${x.desc}`} width={g.width} height={24} /></Box>
         })}
         {d.interrotti > 0 && <Text size="footnote" dimColor>✗ {d.interrotti} interrotti (mai finiti, fermi da oltre 1h)</Text>}
-        <Box width={e.props.bodyColumns} flexDirection="column">
-          <Input key="comando" rows={2} label="Comando" placeholder="Comando per questa chat, poi Invio ↵" value={cmd} submitLabel="↵" onInput={v => void update($, comando, () => v)} onSubmit={v => void azione($, 'invia', v)} />
-        </Box>
         <Box width={e.props.bodyColumns} flexDirection="row" justifyContent="flex-start" alignItems="flex-start" gap={4}>
         <Box flexDirection="column" flexShrink={1} gap={0}>
         <Box flexDirection="row" gap={2} flexWrap="wrap" alignItems="center">

@@ -60,10 +60,8 @@ test('control: resume, cancel, send and stop act on this chat', async ($, on) =>
   expect(sent[0]).toBe('continua da dove eri rimasto')
   await ui.press({ key: 'annulla' })
   expect(sent[1]).toMatch(/annullato/)
-  await ui.input({ key: 'comando', text: 'fai la prova' })
-  expect(sent[2]).toBe('fai la prova')
   await ui.press({ key: 'ferma' })
-  expect(sent).toHaveLength(3)
+  expect(sent).toHaveLength(2)
   await ui.unmount()
 })
 
