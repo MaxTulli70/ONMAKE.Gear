@@ -1,5 +1,6 @@
 export type Riga = { liv: string; nome: string; tipo: string; dir: string; model: string; tok: number; fine: boolean; stato: string; ago: number; desc: string }
 export type Sessione = { id: string; nome: string }
+export type Attivo = { tool: string; cosa: string; t0: number }
 export type Passo = { model: string; effort: string }
 export type Dati = {
   chat: string
@@ -29,6 +30,6 @@ export type Dati = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'onmake-gear': { passo: Passo | null; dati: Dati | null; aperta: boolean; sessioni: Sessione[]; scelta: string; comando: string; vista: string; reset: string }
+    'onmake-gear': { passo: Passo | null; dati: Dati | null; aperta: boolean; sessioni: Sessione[]; scelta: string; comando: string; vista: string; reset: string; attivo: Attivo | null }
   }
 }

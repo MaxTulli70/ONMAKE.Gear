@@ -1,13 +1,13 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { Dati, Passo, Sessione } from '../../types'
+import type { Attivo, Dati, Passo, Sessione } from '../../types'
 
 // Model colours from the gear schema, darkened to read as text.
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.59'
+const VERSIONE = '0.6.60'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -17,6 +17,7 @@ const sessioni = atom({ plugin: 'onmake-gear', key: 'sessioni' } as const, [] as
 const scelta = atom({ plugin: 'onmake-gear', key: 'scelta' } as const, '')
 const vista = atom({ plugin: 'onmake-gear', key: 'vista' } as const, 'tot')
 const reset = atom({ plugin: 'onmake-gear', key: 'reset' } as const, '')
+const attivo = atom({ plugin: 'onmake-gear', key: 'attivo' } as const, null as Attivo | null)
 const comando = atom({ plugin: 'onmake-gear', key: 'comando' } as const, '')
 
 // 'claude-opus-5-5' or 'opus-5-5' -> 'Opus 5.5'
@@ -74,7 +75,7 @@ function indiceOtt(d: Dati) {
 
 const ANIM = '<style>@keyframes gs{0%{transform:translateX(-14px)}100%{transform:translateX(44px)}}.gs{animation:gs 1.1s linear infinite}@keyframes gp{50%{opacity:.3}}.gp{animation:gp 1s ease-in-out infinite}</style>'
 
-function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lavora = false) {
+function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lavora = false, ora: Attivo | null = null, adesso = 0) {
   const out: string[] = lavora ? [ANIM] : []
   let x = 0
   const H = 26, Y = 18
@@ -106,6 +107,14 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
     x += Math.ceil(largo(nome) * 0.85); sp(4)
     if (d.dir === '▲' || d.dir === '▼') { t(d.dir === '▲' ? '↑ salita' : '↓ scesa', 'sm', tinta ? (d.dir === '▲' ? COL.high : COL.medium) : undefined); sp(2) }
   } else t('nessuna marcia', 'mu')
+  // Live: what is running right now (tool and its target) and for how long; 'pronto' when idle.
+  sep()
+  if (lavora && ora) {
+    out.push(`<circle cx="${x + 4}" cy="12" r="3.5" class="gp" style="fill:${tinta ? COL[d.livello ?? 'medium'] ?? '#5c82a8' : '#55554f'}"/>`); sp(12)
+    t(ora.tool, '', tinta ? '#3a3a36' : undefined); if (ora.cosa) { sp(5); t(ora.cosa.slice(0, 34), 'mu') }
+    const sec = adesso && ora.t0 ? Math.max(0, Math.round((adesso - ora.t0) / 1000)) : 0
+    if (sec) { sp(5); t(dur(sec), 'mu') }
+  } else t(lavora ? 'pensa…' : 'pronto', 'mu')
   // The model the chat is using now, e.g. 'opus-5-5' -> 'Opus 5.5'.
   // Model and effort the chat is using now, then the tokens of the current job per model.
   const mod = p?.model || d.chat
@@ -359,6 +368,15 @@ export const register: Register = (on, options) => {
   })
 
   // turn.step streams, so the hook is a generator that passes every chunk through untouched.
+  // Every tool call: remember what runs now, for the live part of the main row.
+  on('tool.call', async ($, e, next) => {
+    const x = e as unknown as { tool: string; command?: string; file_path?: string; pattern?: string; description?: string; agentId?: string }
+    const cosa = x.description || x.command || (x.file_path ? x.file_path.split('/').pop() : '') || x.pattern || ''
+    const t0 = await $.clock.now().catch(() => 0)
+    await update($, attivo, () => ({ tool: x.agentId ? `agente: ${x.tool}` : x.tool, cosa: String(cosa).replace(/\s+/g, ' '), t0 })).catch(() => undefined)
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
   on('turn.start', ($, e, next) => {
     if (e.agentId === undefined) { turnoId = e.turnId; void $.clock.now().then(t => { inizioTurno = new Date(t).toISOString() }) }
     return next(e)
@@ -422,7 +440,7 @@ export const register: Register = (on, options) => {
       // A Button holds only strings and Text (an Svg inside is refused), so its label is Text on every surface.
       return <Button key={k} plain onPress={fn}><Text color={col} dimColor={!col}>{s}</Text></Button>
     }
-    const riga1 = svgRiga(d, tinta, compact, await read($, passo), Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0)
+    const riga1 = svgRiga(d, tinta, compact, await read($, passo), Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, await read($, attivo).catch(() => null), await $.clock.now().catch(() => 0))
     const testaDesk = (
       <Box flexDirection="row" alignItems="center" gap={1} width={e.props.bodyColumns}>
         <Box flexGrow={1} flexShrink={1} overflow="hidden">
