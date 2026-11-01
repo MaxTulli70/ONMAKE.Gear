@@ -78,6 +78,8 @@ def leggi(path):
         # un messaggio vero dell'utente (testo, non il risultato di uno strumento) apre il lavoro attuale
         if d.get("type") == "user" and isinstance(m, dict) and not d.get("isMeta") and not d.get("isSidechain") and t:
             c = m.get("content")
+            if isinstance(c, str):  # the app puts system blocks before your text: drop them before deciding
+                c = re.sub(r"^\s*(<([a-z-]+)[^>]*>.*?</\2>\s*)+", "", c, flags=re.S)
             if (isinstance(c, str) and not c.startswith("<")) or (isinstance(c, list) and any(isinstance(x, dict) and x.get("type") == "text" for x in c) and not any(isinstance(x, dict) and x.get("type") == "tool_result" for x in c)):
                 ultimo = t
                 testo = c if isinstance(c, str) else " ".join(x.get("text", "") for x in c if isinstance(x, dict) and x.get("type") == "text")
