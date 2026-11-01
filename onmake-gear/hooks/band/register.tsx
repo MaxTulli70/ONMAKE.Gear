@@ -228,11 +228,11 @@ export const register: Register = (on, options) => {
     }
     const riga1 = svgRiga(d, tinta, compact)
     const testaDesk = (
-      <Box flexDirection="row" alignItems="center" gap={2} width={e.props.bodyColumns}>
+      <Box flexDirection="row" alignItems="center" gap={1} width={e.props.bodyColumns}>
         <Box flexGrow={1} flexShrink={1} overflow="hidden">
           <Svg source={riga1.source} alt={riga(d, compact)} width={riga1.width} height={24} />
         </Box>
-        <Box flexShrink={0} flexDirection="row" gap={1} alignItems="center">
+        <Box flexShrink={0} flexDirection="row" gap={0} alignItems="center">
           <Svg source={LOGO} alt="ONMAKE" width={19} height={22} />
           <Button key="onmake" plain onPress={() => apriSito($).catch(() => $.ui.toast('Gear: sito non aperto'))}>
             <Text dimColor>onmake.it</Text>
