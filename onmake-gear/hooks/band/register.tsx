@@ -7,7 +7,7 @@ import type { Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.51'
+const VERSIONE = '0.6.52'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -441,10 +441,11 @@ export const register: Register = (on, options) => {
     if (d.tot > 0) parti.push(`passi ${d.fatti} di ${d.tot}`)
     const r1 = parti.join(' · ')
     // Whole session, and the cost estimate (same tokens all in Opus as the reference).
-    const r3 = [`${v === 'wf' ? 'workflow' : v === 'live' ? 'live' : 'chat'}${d.sel ? ' attiva ' + dur(d.sel) : ''}`, d.stok ? `${kt(d.stok)} token` : '', d.sag ? `${d.sag} agenti` : '', d.cr ? `cache ${kt(d.cr)}` : ''].filter(Boolean).join(' · ')
+    const r3 = [`${v === 'wf' ? 'workflow' : v === 'live' ? 'live' : 'chat'}${d.sel ? ' attiva ' + dur(d.sel) : ''}`, d.stok ? `${kt(d.stok)} token` : '', d.sag ? `${d.sag} agenti` : ''].filter(Boolean).join(' · ')
+    const r3b = d.cr ? `cache riletta ${kt(d.cr)} token` : ''
     // Saving in tokens, not money: tokens the agents did on models lower than Opus, and their share of the session.
     const bassi = ['light', 'medium', 'high'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0), 0)
-    const r4 = bassi > 0 ? `risparmio: ${kt(bassi)} token fatti da modelli più bassi di Opus${d.stok ? ` (${bassi / d.stok < 0.001 ? 'meno dello 0,1' : (bassi / d.stok * 100).toFixed(1).replace('.', ',')}% ${v === 'wf' ? 'del workflow' : v === 'live' ? 'del turno' : 'della chat'})` : ''}` : ''
+    const r4 = bassi > 0 ? `risparmio ${kt(bassi)} token su modelli sotto Opus${d.stok ? ` (${bassi / d.stok < 0.001 ? 'meno dello 0,1' : (bassi / d.stok * 100).toFixed(1).replace('.', ',')}%)` : ''}` : ''
     // Optimization index 0-100: how low the work ran. Weight per token: Haiku 1, Sonnet 2 (high 3), Opus 5; 0 = all Opus, 100 = all Haiku.
     const W: Record<string, number> = { light: 1, medium: 2, high: 3, opus: 5 }
     const pesoChat = /haiku/.test(d.chat) ? 1 : /sonnet/.test(d.chat) ? 2 : 5
@@ -452,7 +453,7 @@ export const register: Register = (on, options) => {
     const agI = ['light', 'medium', 'high', 'opus'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0), 0)
     const pesato = ['light', 'medium', 'high', 'opus'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0) * W[k], 0) + Math.max(0, totI - agI) * pesoChat
     const indice = totI ? Math.round((1 - pesato / (totI * 5)) / 0.8 * 100) : null
-    const r5 = indice === null ? '' : `indice di ottimizzazione ${Math.max(0, Math.min(100, indice))}/100 (0 = tutto in Opus, 100 = tutto in Haiku)`
+    const r5 = indice === null ? '' : `indice ottimizzazione ${Math.max(0, Math.min(100, indice))}/100 (0 tutto Opus, 100 tutto Haiku)`
     const r2 = d.righe.length === 0 && d.interrotti === 0 ? 'Nessun agente: lavora solo la chat.' : ''
     const icona: Record<string, string> = { lavora: '▶', fermo: '⏸', completato: '✓' }
 
@@ -460,18 +461,28 @@ export const register: Register = (on, options) => {
     const azzera = async () => { const ora = new Date(await $.clock.now()).toISOString(); await update($, reset, () => ora); await scegli('wf'); $.ui.toast('Gear: workflow azzerato da adesso') }
     // Real buttons: the chosen view is the primary one (no drawing laid over a button, which showed its focus box).
     // Small text buttons (footnote size); the chosen view is dark with a full dot.
-    const pill = (k: string, s: string, fn = () => scegli(k), si = v === k) =>
-      <Button key={k} plain onPress={fn}><Text size="footnote" color={si ? '#3a3a36' : undefined} dimColor={!si}>{si ? '● ' : '○ '}{s}</Text></Button>
+    const pill = (k: string, s: string, fn = () => scegli(k), si = v === k) => piccolo(k, `${si ? '●' : '○'} ${s}`, fn, si ? '#3a3a36' : undefined)
     const chiede = (await read($, comando).catch(() => '')) === 'reset?'
-    const piccolo = (k: string, s: string, fn: () => unknown, col?: string) =>
-      <Button key={k} plain onPress={fn}><Text size="footnote" color={col} dimColor={!col}>{s}</Text></Button>
+    const piccolo = (k: string, s: string, fn: () => unknown, col?: string) => {
+      if (!desk) return tasto(k, s, fn, col)
+      const g = svgScritta(s, col)
+      // the clear button spans the whole word, so no small focus box shows in the middle
+      return (
+        <Box key={k} position="relative">
+          <Svg source={g.source} alt={s} width={g.width} height={18} />
+          <Box position="absolute" top={0} left={0} right={0} bottom={0} overflow="hidden">
+            <Button key={k} plain onPress={fn}><Text>{'\u2002'.repeat(Math.ceil(g.width / 7))}</Text></Button>
+          </Box>
+        </Box>
+      )
+    }
     const sel = (
       <Box flexDirection="row" gap={3} alignItems="center">
         {pill('live', 'live')}
         {pill('wf', rs ? `workflow da ${new Date(rs).toTimeString().slice(0, 5)}` : 'workflow')}
         {pill('tot', 'totale chat')}
         {chiede
-          ? <Box flexDirection="row" gap={2}><Text size="footnote" dimColor>azzerare il workflow da adesso?</Text>{piccolo('ok', 'OK', async () => { await update($, comando, () => ''); await azzera() }, COL.high)}{piccolo('no', 'annulla', () => update($, comando, () => ''))}</Box>
+          ? <Box flexDirection="row" gap={2}>{desk ? scritta('azzerare il workflow da adesso?') : <Text dimColor>azzerare il workflow da adesso?</Text>}{piccolo('ok', 'OK', async () => { await update($, comando, () => ''); await azzera() }, COL.high)}{piccolo('no', 'annulla', () => update($, comando, () => ''))}</Box>
           : piccolo('reset', '↺ nuovo workflow', () => update($, comando, () => 'reset?'))}
       </Box>
     )
@@ -496,6 +507,7 @@ export const register: Register = (on, options) => {
         <Box flexDirection="column" flexShrink={1} gap={0}>
           {desk ? scritta(r1) : <Text dimColor>{r1}</Text>}
           {desk ? scritta(r3) : <Text dimColor>{r3}</Text>}
+          {r3b ? (desk ? scritta(r3b) : <Text dimColor>{r3b}</Text>) : null}
           {r4 ? (desk ? scritta(r4) : <Text dimColor>{r4}</Text>) : null}
           {r5 ? (desk ? scritta(r5) : <Text dimColor>{r5}</Text>) : null}
           {desk && (d.stok || d.tok) ? (() => { const g = svgBarra(d.perliv ?? {}, d.stok || d.tok, tinta); return <Svg source={g.source} alt="chi ha usato i token" width={g.width} height={46} /> })() : null}
