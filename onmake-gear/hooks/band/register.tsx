@@ -7,7 +7,7 @@ import type { Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.56'
+const VERSIONE = '0.6.57'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -72,7 +72,7 @@ function indiceOtt(d: Dati) {
   return Math.max(0, Math.min(100, Math.round((1 - pesato / (tot * 5)) / 0.8 * 100)))
 }
 
-const ANIM = '<style>@keyframes gs{0%{transform:translateX(-14px)}100%{transform:translateX(44px)}}.gs{animation:gs 1.1s linear infinite}@keyframes gp{50%{opacity:.25}}.gp{animation:gp 1s ease-in-out infinite}</style>'
+const ANIM = '<style>@keyframes gs{0%{transform:translateX(-14px)}100%{transform:translateX(44px)}}.gs{animation:gs 1.1s linear infinite}@keyframes gp{50%{opacity:.3}}.gp{animation:gp 1s ease-in-out infinite}</style>'
 
 function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lavora = false) {
   const out: string[] = lavora ? [ANIM] : []
@@ -94,9 +94,10 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
   const k = d.livello ? MARCE.indexOf(d.livello) : -1
   MARCE.forEach((m, i) => {
     const h = 4 + i * 2.6
-    out.push(`<rect x="${i * 5.5}" y="${20 - h}" width="4" height="${h}" rx="1"${i <= k ? ` style="fill:${tinta ? COL[m] : '#55554f'}"` : ' class="v"'}/>`)
+    // while working the active step glows: a soft halo behind it and a slow pulse
+    if (lavora && i === k) out.push(`<rect x="${i * 5.5 - 1.5}" y="${18.5 - h}" width="7" height="${h + 3}" rx="2.5" class="gp" style="fill:${tinta ? COL[m] : '#55554f'};opacity:.35;filter:blur(1.5px)"/>`)
+    out.push(`<rect x="${i * 5.5}" y="${20 - h}" width="4" height="${h}" rx="1"${lavora && i === k ? ' class="gp"' : ''}${i <= k ? ` style="fill:${tinta ? COL[m] : '#55554f'}"` : ' class="v"'}/>`)
   })
-  if (lavora) out.push(`<circle cx="${5 * 5.5 + 3}" cy="4" r="2.6" class="gp" style="fill:${tinta ? COL[d.livello ?? 'medium'] ?? '#5c82a8' : '#55554f'}"/>`)
   x = 5 * 5.5 + 8
   if (k >= 0) {
     // The gear name a little smaller than the rest (11 px).
