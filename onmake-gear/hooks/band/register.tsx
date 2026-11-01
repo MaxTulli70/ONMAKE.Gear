@@ -7,7 +7,7 @@ import type { Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.55'
+const VERSIONE = '0.6.56'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -72,8 +72,10 @@ function indiceOtt(d: Dati) {
   return Math.max(0, Math.min(100, Math.round((1 - pesato / (tot * 5)) / 0.8 * 100)))
 }
 
-function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null) {
-  const out: string[] = []
+const ANIM = '<style>@keyframes gs{0%{transform:translateX(-14px)}100%{transform:translateX(44px)}}.gs{animation:gs 1.1s linear infinite}@keyframes gp{50%{opacity:.25}}.gp{animation:gp 1s ease-in-out infinite}</style>'
+
+function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lavora = false) {
+  const out: string[] = lavora ? [ANIM] : []
   let x = 0
   const H = 26, Y = 18
   const t = (s: string, cls = '', col?: string) => {
@@ -94,7 +96,8 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null) {
     const h = 4 + i * 2.6
     out.push(`<rect x="${i * 5.5}" y="${20 - h}" width="4" height="${h}" rx="1"${i <= k ? ` style="fill:${tinta ? COL[m] : '#55554f'}"` : ' class="v"'}/>`)
   })
-  x = 5 * 5.5 + 6
+  if (lavora) out.push(`<circle cx="${5 * 5.5 + 3}" cy="4" r="2.6" class="gp" style="fill:${tinta ? COL[d.livello ?? 'medium'] ?? '#5c82a8' : '#55554f'}"/>`)
+  x = 5 * 5.5 + 8
   if (k >= 0) {
     // The gear name a little smaller than the rest (11 px).
     const nome = d.livello!.toUpperCase()
@@ -105,7 +108,15 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null) {
   // The model the chat is using now, e.g. 'opus-5-5' -> 'Opus 5.5'.
   // Model and effort the chat is using now, then the tokens of the current job per model.
   const mod = p?.model || d.chat
-  if (mod) { sep(); t('chat', 'mu'); sp(5); t(nomeModello(mod), '', tinta ? colMod(mod, p?.effort) : undefined); if (p?.effort) { sp(5); t(p.effort, 'mu') } }
+  if (mod) { sep(); t('chat', 'mu'); sp(5); t(nomeModello(mod), '', tinta ? colMod(mod, p?.effort) : undefined); if (p?.effort) {
+    // Effort meter: 4 steps low, medium, high, max; while working a light band runs across it.
+    sp(6)
+    const liv = Math.max(1, ['low', 'medium', 'high', 'max'].indexOf(p.effort) + 1)
+    const col = tinta ? colMod(mod, p.effort) : '#8a8a84'
+    out.push(`<clipPath id="ef"><rect x="${x}" y="8" width="40" height="8" rx="3"/></clipPath><rect x="${x}" y="8" width="40" height="8" rx="3" class="v"/><rect x="${x}" y="8" width="${liv * 10}" height="8" rx="3" style="fill:${col}"/>`)
+    if (lavora) out.push(`<g clip-path="url(#ef)"><rect x="${x}" y="8" width="12" height="8" class="gs" style="fill:#ffffff;opacity:.55"/></g>`)
+    x += 44; t(p.effort, 'mu')
+  } }
   // Tokens of the current job per model; nothing while the job has used none yet.
   if (d.tokmod && d.tokmod.length > 0) { sep(); d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); t(nomeModello(m).split(' ')[0], '', tinta ? colMod(m) : undefined); sp(4); t(`${kt(n)} token`) }) }
   else if (d.tok > 0) { sep(); t(`${kt(d.tok)} token`, 'mu') }
@@ -389,7 +400,7 @@ export const register: Register = (on, options) => {
       // A Button holds only strings and Text (an Svg inside is refused), so its label is Text on every surface.
       return <Button key={k} plain onPress={fn}><Text color={col} dimColor={!col}>{s}</Text></Button>
     }
-    const riga1 = svgRiga(d, tinta, compact, await read($, passo))
+    const riga1 = svgRiga(d, tinta, compact, await read($, passo), Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0)
     const testaDesk = (
       <Box flexDirection="row" alignItems="center" gap={1} width={e.props.bodyColumns}>
         <Box flexGrow={1} flexShrink={1} overflow="hidden">
