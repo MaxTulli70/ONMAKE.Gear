@@ -7,7 +7,7 @@ import type { Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.49'
+const VERSIONE = '0.6.50'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -459,15 +459,20 @@ export const register: Register = (on, options) => {
     const scegli = async (x: string) => { await update($, vista, () => x); last = 0; await ricarica($).catch(() => undefined) }
     const azzera = async () => { const ora = new Date(await $.clock.now()).toISOString(); await update($, reset, () => ora); await scegli('wf'); $.ui.toast('Gear: workflow azzerato da adesso') }
     // Real buttons: the chosen view is the primary one (no drawing laid over a button, which showed its focus box).
-    const pill = (k: string, s: string) => desk
-      ? <Button key={k} variant={v === k ? 'primary' : 'secondary'} onPress={() => scegli(k)}>{s}</Button>
-      : tasto(k, v === k ? `[${s}]` : s, () => scegli(k))
+    // Small text buttons (footnote size); the chosen view is dark with a full dot.
+    const pill = (k: string, s: string, fn = () => scegli(k), si = v === k) =>
+      <Button key={k} plain onPress={fn}><Text size="footnote" color={si ? '#3a3a36' : undefined} dimColor={!si}>{si ? '● ' : '○ '}{s}</Text></Button>
+    const chiede = (await read($, comando).catch(() => '')) === 'reset?'
+    const piccolo = (k: string, s: string, fn: () => unknown, col?: string) =>
+      <Button key={k} plain onPress={fn}><Text size="footnote" color={col} dimColor={!col}>{s}</Text></Button>
     const sel = (
-      <Box flexDirection="row" gap={1} alignItems="center">
+      <Box flexDirection="row" gap={3} alignItems="center">
         {pill('live', 'live')}
         {pill('wf', rs ? `workflow da ${new Date(rs).toTimeString().slice(0, 5)}` : 'workflow')}
         {pill('tot', 'totale chat')}
-        {desk ? <Button key="reset" variant="secondary" onPress={azzera}>↺ nuovo workflow</Button> : tasto('reset', '↺ nuovo workflow', azzera)}
+        {chiede
+          ? <Box flexDirection="row" gap={2}><Text size="footnote" dimColor>azzerare il workflow da adesso?</Text>{piccolo('ok', 'OK', async () => { await update($, comando, () => ''); await azzera() }, COL.high)}{piccolo('no', 'annulla', () => update($, comando, () => ''))}</Box>
+          : piccolo('reset', '↺ nuovo workflow', () => update($, comando, () => 'reset?'))}
       </Box>
     )
 
