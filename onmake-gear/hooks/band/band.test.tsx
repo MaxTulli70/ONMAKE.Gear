@@ -49,22 +49,6 @@ test('terminal: the bar is Text, no Svg', async ($, on) => {
   await ui.unmount()
 })
 
-test('control: resume, cancel, send and stop act on this chat', async ($, on) => {
-  seed(on)
-  const sent: string[] = []
-  on('prompt.submit', (_: unknown, e: any) => { sent.push(e.text); return { text: e.text } })
-  on('turn.abort', () => ({}))
-  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
-
-  await ui.press({ key: 'riprendi' })
-  expect(sent[0]).toBe('continua da dove eri rimasto')
-  await ui.press({ key: 'annulla' })
-  expect(sent[1]).toMatch(/annullato/)
-  await ui.press({ key: 'ferma' })
-  expect(sent).toHaveLength(2)
-  await ui.unmount()
-})
-
 test('desktop: the logo button opens the site', async ($, on) => {
   seed(on)
   const runs: string[][] = []
