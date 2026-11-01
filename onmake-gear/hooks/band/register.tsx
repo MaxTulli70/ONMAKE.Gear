@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.83'
+const VERSIONE = '0.6.84'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -573,7 +573,7 @@ function svgCruscotto(livello: string | null, dir: string, tinta: boolean, lavor
   const ei = Math.max(0, ['low', 'medium', 'high', 'max'].indexOf(impegno))
   const f = k >= 0 ? (k * 4 + ei + 0.5) / 20 : 0, a = ang(f)
   const [nx, ny] = pt(a, R - 10), [bx, by] = pt(a + Math.PI, 8)
-  const vib = lavora ? `<animateTransform attributeName="transform" type="rotate" values="-1.5 ${cx} ${cy};1.5 ${cx} ${cy};-1.5 ${cx} ${cy}" dur="0.4s" repeatCount="indefinite"/>` : ''
+  const vib = '' // needle still: it shows gear and effort, not motion
   out.push(`<line x1="${bx}" y1="${by}" x2="${nx}" y2="${ny}" style="stroke:#c0392b;stroke-width:2.2;stroke-linecap:round">${vib}</line>`)
   out.push(`<circle cx="${cx}" cy="${cy}" r="5" style="fill:#3a3a36"/>`)
   const nome = k >= 0 ? M[k].toUpperCase() : tr('ferma')
