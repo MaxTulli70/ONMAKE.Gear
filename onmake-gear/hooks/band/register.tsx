@@ -308,7 +308,7 @@ export const register: Register = (on, options) => {
         <Box key={k} position="relative">
           <Svg source={g.source} alt={s} width={g.width} height={24} />
           <Box position="absolute" top={0} left={0} right={0} bottom={0} justifyContent="center" alignItems="center" overflow="hidden">
-            <Button key={k} plain onPress={fn}><Text>{'\u2003\u2003\u2003'}</Text></Button>
+            <Button key={k} plain onPress={fn}><Text>{'\u2002'}</Text></Button>
           </Box>
         </Box>
       )
@@ -378,12 +378,18 @@ export const register: Register = (on, options) => {
     const sel = await read($, scelta)
     const cmd = await read($, comando)
     const scritta = (s: string) => { const g = svgScritta(s); return <Svg source={g.source} alt={s} width={g.width} height={24} /> }
+    // Facts of the current job (since your last message): time active, tokens split chat/agents, steps.
+    const tokAg = d.righe.reduce((a, r) => a + (r.tok || 0), 0)
+    const parti = [`lavoro attivo da ${dur(d.el)}`, `${kt(d.tok)} token`, `chat ${kt(Math.max(0, d.tok - tokAg))}`, `agenti ${kt(tokAg)}`]
+    if (d.tot > 0) parti.push(`passi ${d.fatti} di ${d.tot}`)
+    const r1 = parti.join(' · ')
+    const r2 = d.righe.length === 0 && d.interrotti === 0 ? 'Nessun agente: lavora solo la chat.' : ''
     const icona: Record<string, string> = { lavora: '▶', fermo: '⏸', completato: '✓' }
 
     return stack(
       <Box flexDirection="column" width={e.props.bodyColumns}>
         {testa}
-        {d.righe.length === 0 && d.interrotti === 0 && (desk ? scritta('Nessun agente in questa sessione.') : <Text dimColor>Nessun agente in questa sessione.</Text>)}
+        {r2 ? (desk ? scritta(r2) : <Text dimColor>{r2}</Text>) : null}
         {d.righe.map((x, i) => {
           if (!desk) return (
             <Text key={String(i)} wrap="truncate-end" dimColor={x.stato === 'completato'}>
@@ -396,7 +402,7 @@ export const register: Register = (on, options) => {
         })}
         {d.interrotti > 0 && <Text size="footnote" dimColor>✗ {d.interrotti} interrotti (mai finiti, fermi da oltre 1h)</Text>}
         <Box width={e.props.bodyColumns} flexDirection="column">
-          <Input key="comando" rows={1} label={desk ? '' : 'Comando'} placeholder="Comando per la sessione scelta, poi Invio ↵" value={cmd} submitLabel="↵" onInput={v => void update($, comando, () => v)} onSubmit={v => void azione($, 'invia', v)} />
+          <Input key="comando" rows={1} label="Comando" placeholder="Comando per la sessione scelta, poi Invio ↵" value={cmd} submitLabel="↵" onInput={v => void update($, comando, () => v)} onSubmit={v => void azione($, 'invia', v)} />
         </Box>
         <Box flexDirection="row" gap={2} flexWrap="wrap" alignItems="center">
           {lista.length > 0
@@ -404,6 +410,7 @@ export const register: Register = (on, options) => {
             : tasto('ricarica', 'Carica sessioni ↻', () => caricaSessioni($))}
           {tastino('ferma', 'Ferma', () => azione($, 'ferma'), c('max'))}
           {tastino('riprendi', 'Riprendi', () => azione($, 'riprendi'), c('medium'))}
+          {desk ? scritta(r1) : <Text dimColor>{r1}</Text>}
         </Box>
       </Box>,
     )
