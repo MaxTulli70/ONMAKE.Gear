@@ -151,6 +151,9 @@ def agenti(sess):
         stato = "completato" if fine else ("interrotto" if a > ABBANDONO else ("fermo" if a >= FERMO else "lavora"))
         liv = liv if liv in LIV else "altro"
         nome = tipo.split(":")[-1] if liv == "altro" else liv
+        if liv == "altro":  # agente non-gear: livello dal modello
+            m = x.get("model") or ""
+            liv = "light" if "haiku" in m else "medium" if "sonnet" in m else "opus" if "opus" in m else "altro"
         x.update(tipo=tipo.split(":")[-1], liv=liv, nome=nome, desc=meta.get("description", ""), fine=fine, ago=ago, stato=stato)
         out.append(x)
     out = [x for x in out if not DA or x["a"]]  # dal reset: solo gli agenti che hanno lavorato dopo

@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.66'
+const VERSIONE = '0.6.67'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -18,6 +18,7 @@ const scelta = atom({ plugin: 'onmake-gear', key: 'scelta' } as const, '')
 const vista = atom({ plugin: 'onmake-gear', key: 'vista' } as const, 'tot')
 const reset = atom({ plugin: 'onmake-gear', key: 'reset' } as const, '')
 const attivo = atom({ plugin: 'onmake-gear', key: 'attivo' } as const, null as Attivo | null)
+const storia = atom({ plugin: 'onmake-gear', key: 'storia' } as const, [] as Attivo[]) // last 5 actions of this turn
 const comando = atom({ plugin: 'onmake-gear', key: 'comando' } as const, '')
 const tic = atom({ plugin: 'onmake-gear', key: 'tic' } as const, 0) // once a second while working: makes the band redraw
 
@@ -230,6 +231,7 @@ function svgBarra(pl: Record<string, [number, number]>, tot: number, tinta: bool
 }
 
 // Dashboard gauge: half dial with the 5 gears as coloured sectors, needle on the active one, arrow up/down.
+const livChat = (m: string) => (/haiku/.test(m) ? 'light' : /sonnet/.test(m) ? 'medium' : /opus/.test(m) ? 'opus' : null)
 function svgCruscotto(livello: string | null, dir: string, tinta: boolean, lavora: boolean) {
   const M = ['light', 'medium', 'high', 'opus', 'max'], cx = 60, cy = 58, R = 48
   const pt = (a: number, r: number) => `${(cx + r * Math.cos(a)).toFixed(1)} ${(cy - r * Math.sin(a)).toFixed(1)}`
@@ -363,6 +365,8 @@ async function apriChiudi($: EngineInterface) {
 }
 
 let last = 0
+let fase = '' // what the model streams now: pensa or scrive (main chat)
+let car = 0 // characters streamed this turn, /4 is about tokens
 let inizioTurno = '' // start of the current turn, for the live view
 let fermaTic: (() => void) | undefined // stops the 1 s timer
 
@@ -397,7 +401,9 @@ export const register: Register = (on, options) => {
     const x = e as unknown as { tool: string; command?: string; file_path?: string; pattern?: string; description?: string; agentId?: string }
     const cosa = x.description || x.command || (x.file_path ? x.file_path.split('/').pop() : '') || x.pattern || ''
     const t0 = await $.clock.now().catch(() => 0)
-    await update($, attivo, () => ({ tool: x.agentId ? `agente: ${x.tool}` : x.tool, cosa: String(cosa).replace(/\s+/g, ' '), t0 })).catch(() => undefined)
+    const nuovo = { tool: x.agentId ? `agente: ${x.tool}` : x.tool, cosa: String(cosa).replace(/\s+/g, ' '), t0 }
+    await update($, attivo, () => nuovo).catch(() => undefined)
+    await update($, storia, h => [nuovo, ...(h ?? [])].slice(0, 5)).catch(() => undefined)
     return next(e)
   }).catch(($, e, next) => next(e))
 
@@ -406,6 +412,7 @@ export const register: Register = (on, options) => {
       fermaTic?.()
       fermaTic = $.clock.every(1000, () => { void update($, tic, n => n + 1).catch(() => undefined) })
     }
+    if (e.agentId === undefined) { void update($, storia, () => []).catch(() => undefined); fase = ''; car = 0 }
     if (e.agentId === undefined) { turnoId = e.turnId; void $.clock.now().then(t => { inizioTurno = new Date(t).toISOString() }) }
     return next(e)
   })
@@ -418,7 +425,11 @@ export const register: Register = (on, options) => {
       // live view: refresh while the turn runs too (still at most every 15 s)
       if ((await read($, vista).catch(() => 'tot')) === 'live') void aggiorna($, below, compact)
     }
-    return yield* next(e)
+    if (e.agentId !== undefined) return yield* next(e)
+    for await (const c of next(e)) {
+      if (c.kind === 'thinking') { fase = 'pensa'; car += c.text.length } else if (c.kind === 'text') { fase = 'scrive'; car += c.text.length } else if (c.kind === 'tool') fase = ''
+      yield c
+    }
   })
 
   on('turn.complete', async ($, e, next) => {
@@ -545,6 +556,32 @@ export const register: Register = (on, options) => {
     const r2 = d.righe.length === 0 && d.interrotti === 0 ? 'Nessun agente: lavora solo la chat.' : ''
     const icona: Record<string, string> = { lavora: '▶', fermo: '⏸', completato: '✓' }
 
+    const adesso = await $.clock.now().catch(() => 0)
+    const hist = (await read($, storia).catch(() => [])) as Attivo[]
+    const lavoraOra = Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0
+    await read($, tic).catch(() => 0) // ticks the live line
+    const p0 = await read($, passo).catch(() => null)
+    const secT = inizioTurno ? Math.max(0, Math.round((adesso - new Date(inizioTurno).getTime()) / 1000)) : 0
+    const ora0 = hist[0] ? spiega(hist[0]).cosa : ''
+    const cosaFa = fase || ora0
+    const vivo = lavoraOra
+      ? `in corso da ${dur(secT)}${cosaFa ? ' · ' + cosaFa : ''}${car > 0 ? ` · ~${kt(Math.round(car / 4))} token` : ''} · ${(p0?.model ?? d.chat).replace('claude-', '')} ${p0?.effort ?? ''} · ${d.lavorano} agenti al lavoro`.replace(/ {2,}/g, ' ')
+      : 'pronto'
+    const rigaVivo = desk ? scritta(vivo) : <Text dimColor>{vivo}</Text>
+    const righeOra = hist.length === 0 ? null : (
+      <Box flexDirection="column">
+        {hist.map((a, i) => {
+          const sp = spiega(a), txt = `${sp.cosa}${sp.dove ? ' ' + sp.dove.slice(0, 30) : ''} · ${Math.max(0, Math.round((adesso - a.t0) / 1000))} s`
+          const pulsa = i === 0 && lavoraOra
+          return desk ? (
+            <Box key={String(i)} flexDirection="row" alignItems="center">
+              <Svg source={`<svg xmlns="http://www.w3.org/2000/svg" width="12" height="18" viewBox="0 0 12 18">${ANIM}<circle cx="6" cy="9" r="3" class="${pulsa ? 'gp' : ''}" style="fill:${pulsa ? '#6fc08a' : '#8a8a84'}"/></svg>`} alt="" width={12} height={18} />
+              {scritta(txt)}
+            </Box>
+          ) : <Text key={String(i)} dimColor>{pulsa ? '●' : '○'} {txt}</Text>
+        })}
+      </Box>
+    )
     const scegli = async (x: string) => { await update($, vista, () => x); last = 0; await ricarica($).catch(() => undefined) }
     const azzera = async () => { const ora = new Date(await $.clock.now()).toISOString(); await update($, reset, () => ora); await scegli('wf'); $.ui.toast('Gear: workflow azzerato da adesso') }
     // Real buttons: the chosen view is the primary one (no drawing laid over a button, which showed its focus box).
@@ -579,6 +616,8 @@ export const register: Register = (on, options) => {
       <Box flexDirection="column" width={e.props.bodyColumns}>
         {testa}
         {sel}
+        {rigaVivo}
+        {righeOra}
         {r2 ? (desk ? scritta(r2) : <Text dimColor>{r2}</Text>) : null}
         {d.righe.map((x, i) => {
           if (!desk) return (
@@ -598,7 +637,7 @@ export const register: Register = (on, options) => {
           {r5 ? (desk ? scritta(r5) : <Text dimColor>{r5}</Text>) : null}
           {desk && (d.stok || d.tok) ? (() => { const g = svgBarra(d.perliv ?? {}, d.stok || d.tok, tinta); return <Svg source={g.source} alt="chi ha usato i token" width={g.width} height={46} /> })() : null}
         </Box>
-        {desk ? (() => { const c = svgCruscotto(d.livello, d.dir, tinta, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0); return <Box flexShrink={0}><Svg source={c.source} alt="cruscotto marcia" width={c.width} height={80} /></Box> })() : null}
+        {desk ? (() => { const c = svgCruscotto(d.livello ?? livChat(d.chat), d.dir, tinta, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0); return <Box flexShrink={0}><Svg source={c.source} alt="cruscotto marcia" width={c.width} height={80} /></Box> })() : null}
         {desk ? (() => { const g = svgGriglia(d.perliv ?? {}, tinta, d.livello); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={84} /></Box> })() : null}
         </Box>
         {desk ? <Box flexDirection="row" justifyContent="flex-end"><Svg source={`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="16" viewBox="0 0 80 16">${STILE}<text x="80" y="12" class="sm mu" text-anchor="end">Gear ${VERSIONE}</text></svg>`} alt={`Gear ${VERSIONE}`} width={80} height={16} /></Box> : <Text dimColor>Gear {VERSIONE}</Text>}
