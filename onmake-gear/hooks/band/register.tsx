@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.76'
+const VERSIONE = '0.6.77'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -19,6 +19,7 @@ const vista = atom({ plugin: 'onmake-gear', key: 'vista' } as const, 'tot')
 const reset = atom({ plugin: 'onmake-gear', key: 'reset' } as const, '')
 const attivo = atom({ plugin: 'onmake-gear', key: 'attivo' } as const, null as Attivo | null)
 const storia = atom({ plugin: 'onmake-gear', key: 'storia' } as const, [] as Attivo[]) // last 5 actions of this turn
+const guida = atom({ plugin: 'onmake-gear', key: 'guida' } as const, false)
 const comando = atom({ plugin: 'onmake-gear', key: 'comando' } as const, '')
 const tic = atom({ plugin: 'onmake-gear', key: 'tic' } as const, 0) // once a second while working: makes the band redraw
 
@@ -94,6 +95,17 @@ function spiega(ora: Attivo) {
   if (base.startsWith('mcp__')) return { cosa: chi + 'usa ' + base.split('__')[1], dove: '' }
   return { cosa: chi + (STRUMENTI[base] ?? base), dove: ora.cosa }
 }
+
+// Short guide shown by the '? guida' button.
+const GUIDA = [
+  'marce: LIGHT Haiku, MEDIUM e HIGH Sonnet, OPUS Opus, MAX picco',
+  '↑ salita, ↓ scesa: marcia rispetto all\'agente prima',
+  'barretta: impegno low, medium, high, max',
+  'live: turno in corso · workflow: dal reset · totale: chat',
+  'contachilometri: token al minuto del turno',
+  'indice 0 tutto Opus, 100 tutto Haiku (verde ≥50)',
+  'risparmio: token fatti da modelli sotto Opus',
+]
 
 function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lavora = false, ora: Attivo | null = null, adesso = 0, vivoTok = 0) {
   const out: string[] = lavora ? [ANIM] : []
@@ -621,6 +633,7 @@ export const register: Register = (on, options) => {
         </Box>
       )
     }
+    const apriG = await read($, guida).catch(() => false)
     const sel = (
       <Box flexDirection="row" gap={3} alignItems="center">
         {pill('live', 'live')}
@@ -658,7 +671,8 @@ export const register: Register = (on, options) => {
         {desk ? (() => { const sMin = lav0 ? (oraJ - inizio) / 60000 : 0; const c = svgCruscotto(d.livello ?? livChat(d.chat), d.dir, tinta, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, p0?.effort ?? '', sMin > 0.05 ? Math.round(car / sMin) : 0); return <Box flexShrink={0}><Svg source={c.source} alt="contachilometri: token al minuto" width={c.width} height={90} /></Box> })() : null}
         {desk ? (() => { const g = svgGriglia(d.perliv ?? {}, tinta, d.livello); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={84} /></Box> })() : null}
         </Box>
-        {desk ? <Box flexDirection="row" justifyContent="flex-end"><Svg source={`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="16" viewBox="0 0 80 16">${STILE}<text x="80" y="12" class="sm mu" text-anchor="end">Gear ${VERSIONE}</text></svg>`} alt={`Gear ${VERSIONE}`} width={80} height={16} /></Box> : <Text dimColor>Gear {VERSIONE}</Text>}
+        {apriG ? <Box flexDirection="column">{GUIDA.map((x, i) => <Box key={'g' + i}>{desk ? scritta(x) : <Text dimColor>{x}</Text>}</Box>)}</Box> : null}
+        {desk ? <Box flexDirection="row" justifyContent="flex-end" alignItems="center" gap={2}>{piccolo('guida', apriG ? '× guida' : '? guida', () => update($, guida, g => !g))}<Svg source={`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="16" viewBox="0 0 80 16">${STILE}<text x="80" y="12" class="sm mu" text-anchor="end">Gear ${VERSIONE}</text></svg>`} alt={`Gear ${VERSIONE}`} width={80} height={16} /></Box> : <Text dimColor>Gear {VERSIONE}</Text>}
       </Box>,
     )
   })
