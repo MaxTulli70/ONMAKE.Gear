@@ -7,7 +7,7 @@ import type { Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.58'
+const VERSIONE = '0.6.59'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -124,7 +124,6 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
   // Whole session: all tokens so far and how many agents it has used.
   const io = indiceOtt(d)
   if (io !== null) { sep(); t('indice', 'mu'); sp(4); t(`${io}/100`, '', tinta ? (io >= 50 ? COL.medium : io >= 20 ? COL.high : '#c0714f') : undefined) }
-  if (d.stok) { sep(); t('questa chat', 'mu'); sp(4); t(`${kt(d.stok)} token`); if (d.sag) { sp(6); t(`${d.sag} agenti`, 'mu') } }
   if (!compact) {
     // Only what is useful now: the current job (since your last message); counts at zero and a missing task list are left out.
     const n: [number, string, string | undefined][] = [[d.lavorano, '▶', COL.medium], [d.fermi, '⏸', COL.high], [d.completi, '✓', undefined], [d.interrotti, '✗', undefined]]
