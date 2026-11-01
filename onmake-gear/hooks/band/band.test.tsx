@@ -37,7 +37,7 @@ test('desktop: the bar is an Svg with the level and the share', async ($, on) =>
   expect(await ui.find({ key: 'onmake' })).toBeTruthy()
   expect(await ui.find({ key: 'tendina' })).toBeTruthy()
   expect(await ui.find({ key: 'pannello' })).toBeTruthy()
-  expect(await ui.find({ type: 'Text', text: /job/ })).toBeTruthy()
+  expect(JSON.stringify(await ui.find({ type: 'Box' }))).toContain('job')
   await ui.unmount()
 })
 
@@ -65,7 +65,7 @@ test('control: stop, resume and send call the session tools', async ($, on) => {
   expect(calls[1].session_id).toBe('local_abc')
   expect(calls[1].message).toBe('continua da dove eri rimasto')
 
-  await ui.press({ key: 'invia' })
+  await ui.input({ key: 'comando', text: 'fai la prova' })
   expect(calls[2].message).toBe('fai la prova')
   await ui.unmount()
 })

@@ -80,7 +80,7 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null) {
     const nome = d.livello!.toUpperCase()
     out.push(`<text x="${x}" y="${Y}" class="sm"${tinta ? ` style="fill:${COL[d.livello!]}"` : ''}>${esc(nome)}</text>`)
     x += Math.ceil(largo(nome) * 0.85); sp(4)
-    if (d.dir === '▲' || d.dir === '▼') t(d.dir, 'mu')
+    if (d.dir === '▲' || d.dir === '▼') { t(d.dir, 'mu'); sp(2) }
   } else t('nessuna marcia', 'mu')
   // The model the chat is using now, e.g. 'opus-5-5' -> 'Opus 5.5'.
   // Model and effort the chat is using now, then the tokens of the current job per model.
@@ -113,6 +113,26 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null) {
 // ONMAKE logo (assets/onmake-logo.svg) with its link to the site inside the SVG.
 const LOGO = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="32" height="34" viewBox="0 -5 100 114"><a href="https://www.onmake.it" xlink:href="https://www.onmake.it" target="_blank" rel="noopener"><title>onmake.it</title><defs> <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"> <stop offset="0" stop-color="#8fbc7c"/><stop offset="0.45" stop-color="#6aa057"/><stop offset="1" stop-color="#5f9a4e"/> </linearGradient> <linearGradient id="f" x1="0" y1="0" x2="1" y2="1"> <stop offset="0" stop-color="#4a4a48"/><stop offset="1" stop-color="#2f2f2e"/> </linearGradient> </defs> <path d="M50 3 L92.4 27.5 Q94 28.4 94 30.3 L94 73.7 Q94 75.6 92.4 76.5 L50 101 L7.6 76.5 Q6 75.6 6 73.7 L6 30.3 Q6 28.4 7.6 27.5 Z" fill="url(#f)"/> <path d="M50 12.5 L85.5 33 L85.5 71 L50 91.5 L14.5 71 L14.5 33 Z" fill="url(#g)" stroke="#6b6b69" stroke-width="0.8"/> <path d="M14.5 33 L50 12.5 L85.5 33 L85.5 40 Q50 32 14.5 66 Z" fill="#ffffff" opacity="0.12"/> <text x="50" y="58" text-anchor="middle" font-family="Futura, 'Avenir Next', 'Century Gothic', system-ui, sans-serif" font-weight="600" font-size="15.5" textLength="66" lengthAdjust="spacingAndGlyphs" fill="#363634">ONMAKE</text></a></svg>`
 const SITO = 'https://www.onmake.it'
+
+// One agent row of the dropdown, drawn like the bar so both share size and weight.
+function svgAgente(x: { stato: string; liv: string; nome: string; dir: string; model: string; tok: number; ago: number; desc: string }, tinta: boolean) {
+  const out: string[] = []
+  let px = 0
+  const t = (s: string, cls = '', col?: string) => {
+    out.push(`<text x="${px}" y="17"${cls ? ` class="${cls}"` : ''}${col ? ` style="fill:${col}"` : ''}>${esc(s)}</text>`)
+    px += largo(s)
+  }
+  const ic = x.stato === 'lavora' ? '▶' : x.stato === 'fermo' ? '⏸' : '✓'
+  const col = x.stato === 'fermo' ? COL.high : COL[x.liv] ?? GRIGIO
+  t(`${ic} ${x.nome}${x.dir === '▲' || x.dir === '▼' ? ' ' + x.dir : ''}`, x.stato === 'completato' ? 'mu' : '', tinta && x.stato !== 'completato' ? col : undefined)
+  px += 10
+  if (x.stato === 'fermo') { t(`fermo da ${dur(x.ago)}`, '', tinta ? COL.high : undefined); px += 10 }
+  t(nomeModello(x.model), 'mu'); px += 10
+  t(`${kt(x.tok)} tok`, 'mu'); px += 10
+  t(x.desc, x.stato === 'completato' ? 'mu' : '')
+  const w = Math.ceil(px + 2)
+  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="24" viewBox="0 0 ${w} 24">${STILE}${out.join('')}</svg>`, width: w }
+}
 
 async function apriSito($: EngineInterface) {
   const windows = (await $.env.get('OS')) === 'Windows_NT'
@@ -169,9 +189,9 @@ async function caricaSessioni($: EngineInterface) {
   }
 }
 
-async function azione($: EngineInterface, cosa: 'invia' | 'ferma' | 'riprendi') {
+async function azione($: EngineInterface, cosa: 'invia' | 'ferma' | 'riprendi', scritto?: string) {
   const id = await read($, scelta)
-  const msg = cosa === 'riprendi' ? 'continua da dove eri rimasto' : (await read($, comando)).trim()
+  const msg = cosa === 'riprendi' ? 'continua da dove eri rimasto' : (scritto ?? (await read($, comando))).trim()
   if (id === '') return $.ui.toast('Gear: scegli una sessione')
   if (cosa === 'invia' && msg === '') return $.ui.toast('Gear: scrivi un comando')
   try {
@@ -327,23 +347,26 @@ export const register: Register = (on, options) => {
       <Box flexDirection="column" width={e.props.bodyColumns}>
         {testa}
         {d.righe.length === 0 && d.interrotti === 0 && <Text dimColor>Nessun agente in questa sessione.</Text>}
-        {d.righe.map((x, i) => (
-          <Text key={String(i)} size="footnote" wrap="truncate-end" dimColor={x.stato === 'completato'}>
-            <Text color={x.stato === 'fermo' ? c('high') : c(x.liv, tinta ? GRIGIO : undefined)}>{icona[x.stato] ?? '·'} {x.nome}{x.dir === '▲' || x.dir === '▼' ? ' ' + x.dir : ''}</Text>
-            <Text dimColor>  {x.stato === 'fermo' ? `fermo da ${dur(x.ago)}  ` : ''}{x.model}  {kt(x.tok)} tok  {x.desc}</Text>
-          </Text>
-        ))}
+        {d.righe.map((x, i) => {
+          if (!desk) return (
+            <Text key={String(i)} wrap="truncate-end" dimColor={x.stato === 'completato'}>
+              <Text color={x.stato === 'fermo' ? c('high') : c(x.liv, tinta ? GRIGIO : undefined)}>{icona[x.stato] ?? '·'} {x.nome}{x.dir === '▲' || x.dir === '▼' ? ' ' + x.dir : ''}</Text>
+              <Text dimColor>  {x.stato === 'fermo' ? `fermo da ${dur(x.ago)}  ` : ''}{x.model}  {kt(x.tok)} tok  {x.desc}</Text>
+            </Text>
+          )
+          const g = svgAgente(x, tinta)
+          return <Box key={String(i)} overflow="hidden"><Svg source={g.source} alt={`${x.nome} ${x.stato} ${x.desc}`} width={g.width} height={24} /></Box>
+        })}
         {d.interrotti > 0 && <Text size="footnote" dimColor>✗ {d.interrotti} interrotti (mai finiti, fermi da oltre 1h)</Text>}
         <Box flexDirection="row" gap={2} flexWrap="wrap" alignItems="center">
           {lista.length > 0
             ? <Select key="sessione" label="Sessione" options={lista.map(x => ({ value: x.id, label: x.nome || x.id.slice(0, 8) }))} value={sel || lista[0].id} onSelect={v => void update($, scelta, () => v)} />
             : tasto('ricarica', 'Carica sessioni ↻', () => caricaSessioni($))}
-          {tasto('invia', 'Invia comando', () => azione($, 'invia'), c('light'))}
           {tasto('ferma', 'Ferma', () => azione($, 'ferma'), c('max'))}
           {tasto('riprendi', 'Riprendi', () => azione($, 'riprendi'), c('medium'))}
         </Box>
         <Box width={e.props.bodyColumns} flexDirection="column">
-          <Input key="comando" rows={3} label="Comando" placeholder="Comando per la sessione scelta: scrivi e premi Invio" value={cmd} submitLabel="invia" onInput={v => void update($, comando, () => v)} onSubmit={v => void update($, comando, () => v).then(() => azione($, 'invia'))} />
+          <Input key="comando" rows={2} label="Comando" placeholder="Scrivi il comando per la sessione scelta e premi Invio" value={cmd} submitLabel="invia" onInput={v => void update($, comando, () => v)} onSubmit={v => void azione($, 'invia', v)} />
         </Box>
       </Box>,
     )
