@@ -1,4 +1,8 @@
+<p align="center"><a href="https://www.onmake.it"><img src="docs/onmake-logo.svg" alt="ONMAKE" width="110"></a></p>
+
 # ONMAKE Gear
+
+<p align="center"><a href="https://www.onmake.it">www.onmake.it</a></p>
 
 The right model at the right moment for the task at hand, with effort matched to the task: excellent work, optimised tokens, always leaning to saving, with excellent quality.
 
@@ -37,9 +41,9 @@ Italiano: see [README.it.md](README.it.md).
 
 Buttons: the ONMAKE logo opens onmake.it; the arrow opens the dropdown; ↗ opens the HTML panel in the browser.
 
-![Gear bar](docs/gear-barra.png)
+<p align="center"><img src="docs/gear-barra.png" alt="Gear bar" width="780"></p>
 
-![Gear panel](docs/gear-pannello.png)
+<p align="center"><img src="docs/gear-pannello.png" alt="Gear panel" width="780"></p>
 
 The dropdown has three views: live (from the start of the current turn), workflow (from the saved reset) and total chat (the whole chat). It holds the speedometer, a dial with zones L M H O X and a needle that follows gear and effort (4 effort steps per gear).
 

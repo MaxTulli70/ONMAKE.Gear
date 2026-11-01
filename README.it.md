@@ -43,9 +43,9 @@ Versione 0.6.89, in prova.
 
 Pulsanti: il logo ONMAKE apre onmake.it; la freccia apre il menu a tendina; ↗ apre il pannello HTML nel browser.
 
-![Barra di Gear](docs/gear-barra.png)
+<p align="center"><img src="docs/gear-barra.png" alt="Gear bar" width="780"></p>
 
-![Pannello di Gear](docs/gear-pannello.png)
+<p align="center"><img src="docs/gear-pannello.png" alt="Gear panel" width="780"></p>
 
 Il menu a tendina ha tre viste: live (dall'inizio del turno attuale), workflow (dal reset salvato) e chat totale (tutta la chat). Contiene il contachilometri, un quadrante con le zone L M H O X e una lancetta che segue marcia ed effort (4 passi di effort per marcia).
 
