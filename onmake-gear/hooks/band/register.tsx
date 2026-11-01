@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.77'
+const VERSIONE = '0.6.78'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -19,6 +19,7 @@ const vista = atom({ plugin: 'onmake-gear', key: 'vista' } as const, 'tot')
 const reset = atom({ plugin: 'onmake-gear', key: 'reset' } as const, '')
 const attivo = atom({ plugin: 'onmake-gear', key: 'attivo' } as const, null as Attivo | null)
 const storia = atom({ plugin: 'onmake-gear', key: 'storia' } as const, [] as Attivo[]) // last 5 actions of this turn
+const lingua = atom({ plugin: 'onmake-gear', key: 'lingua' } as const, 'it')
 const guida = atom({ plugin: 'onmake-gear', key: 'guida' } as const, false)
 const comando = atom({ plugin: 'onmake-gear', key: 'comando' } as const, '')
 const tic = atom({ plugin: 'onmake-gear', key: 'tic' } as const, 0) // once a second while working: makes the band redraw
@@ -97,15 +98,13 @@ function spiega(ora: Attivo) {
 }
 
 // Short guide shown by the '? guida' button.
-const GUIDA = [
-  'marce: LIGHT Haiku, MEDIUM e HIGH Sonnet, OPUS Opus, MAX picco',
-  '↑ salita, ↓ scesa: marcia rispetto all\'agente prima',
-  'barretta: impegno low, medium, high, max',
-  'live: turno in corso · workflow: dal reset · totale: chat',
-  'contachilometri: token al minuto del turno',
-  'indice 0 tutto Opus, 100 tutto Haiku (verde ≥50)',
-  'risparmio: token fatti da modelli sotto Opus',
-]
+const GUIDA: Record<string, string[]> = {
+  it: ['marce: LIGHT Haiku, MEDIUM e HIGH Sonnet, OPUS Opus, MAX picco', '↑ salita, ↓ scesa: marcia rispetto all\'agente prima', 'barretta: impegno low, medium, high, max', 'live: turno in corso · workflow: dal reset · totale: chat', 'contachilometri: token al minuto del turno', 'indice 0 tutto Opus, 100 tutto Haiku (verde ≥50)', 'risparmio: token fatti da modelli sotto Opus'],
+  en: ['gears: LIGHT Haiku, MEDIUM and HIGH Sonnet, OPUS Opus, MAX peak', '↑ up, ↓ down: gear compared with the previous agent', 'small bar: effort low, medium, high, max', 'live: current turn · workflow: since reset · total: chat', 'speedometer: tokens per minute of the turn', 'index 0 all Opus, 100 all Haiku (green ≥50)', 'saving: tokens done by models below Opus'],
+  de: ['Gänge: LIGHT Haiku, MEDIUM und HIGH Sonnet, OPUS Opus, MAX Spitze', '↑ hoch, ↓ runter: Gang im Vergleich zum vorigen Agenten', 'Balken: Aufwand low, medium, high, max', 'live: aktueller Durchgang · Workflow: seit Reset · gesamt: Chat', 'Tacho: Token pro Minute des Durchgangs', 'Index 0 alles Opus, 100 alles Haiku (grün ≥50)', 'Ersparnis: Token von Modellen unter Opus'],
+  fr: ['vitesses : LIGHT Haiku, MEDIUM et HIGH Sonnet, OPUS Opus, MAX pic', '↑ montée, ↓ descente : vitesse par rapport à l\'agent précédent', 'barrette : effort low, medium, high, max', 'live : tour en cours · workflow : depuis le reset · total : chat', 'compteur : tokens par minute du tour', 'indice 0 tout Opus, 100 tout Haiku (vert ≥50)', 'économie : tokens faits par des modèles sous Opus'],
+  es: ['marchas: LIGHT Haiku, MEDIUM y HIGH Sonnet, OPUS Opus, MAX pico', '↑ sube, ↓ baja: marcha respecto al agente anterior', 'barrita: esfuerzo low, medium, high, max', 'live: turno en curso · workflow: desde el reset · total: chat', 'velocímetro: tokens por minuto del turno', 'índice 0 todo Opus, 100 todo Haiku (verde ≥50)', 'ahorro: tokens hechos por modelos bajo Opus'],
+}
 
 function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lavora = false, ora: Attivo | null = null, adesso = 0, vivoTok = 0) {
   const out: string[] = lavora ? [ANIM] : []
@@ -634,6 +633,7 @@ export const register: Register = (on, options) => {
       )
     }
     const apriG = await read($, guida).catch(() => false)
+    const lg = (await read($, lingua).catch(() => 'it')) || 'it'
     const sel = (
       <Box flexDirection="row" gap={3} alignItems="center">
         {pill('live', 'live')}
@@ -671,7 +671,7 @@ export const register: Register = (on, options) => {
         {desk ? (() => { const sMin = lav0 ? (oraJ - inizio) / 60000 : 0; const c = svgCruscotto(d.livello ?? livChat(d.chat), d.dir, tinta, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, p0?.effort ?? '', sMin > 0.05 ? Math.round(car / sMin) : 0); return <Box flexShrink={0}><Svg source={c.source} alt="contachilometri: token al minuto" width={c.width} height={90} /></Box> })() : null}
         {desk ? (() => { const g = svgGriglia(d.perliv ?? {}, tinta, d.livello); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={84} /></Box> })() : null}
         </Box>
-        {apriG ? <Box flexDirection="column">{GUIDA.map((x, i) => <Box key={'g' + i}>{desk ? scritta(x) : <Text dimColor>{x}</Text>}</Box>)}</Box> : null}
+        {apriG ? <Box flexDirection="column"><Box flexDirection="row" gap={2}>{Object.keys(GUIDA).map(k => piccolo('lg' + k, k.toUpperCase(), () => update($, lingua, () => k), k === lg ? '#3a3a36' : undefined))}</Box>{(GUIDA[lg] ?? GUIDA.it).map((x, i) => <Box key={'g' + i}>{desk ? scritta(x) : <Text dimColor>{x}</Text>}</Box>)}</Box> : null}
         {desk ? <Box flexDirection="row" justifyContent="flex-end" alignItems="center" gap={2}>{piccolo('guida', apriG ? '× guida' : '? guida', () => update($, guida, g => !g))}<Svg source={`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="16" viewBox="0 0 80 16">${STILE}<text x="80" y="12" class="sm mu" text-anchor="end">Gear ${VERSIONE}</text></svg>`} alt={`Gear ${VERSIONE}`} width={80} height={16} /></Box> : <Text dimColor>Gear {VERSIONE}</Text>}
       </Box>,
     )
