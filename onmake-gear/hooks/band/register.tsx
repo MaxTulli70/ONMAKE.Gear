@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.63'
+const VERSIONE = '0.6.64'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -517,19 +517,19 @@ export const register: Register = (on, options) => {
 
     const v = await read($, vista).catch(() => 'tot')
     const rs = await read($, reset).catch(() => '')
-    const scritta = (s: string) => { const g = svgScritta(s, undefined, 480); return <Svg source={g.source} alt={s} width={g.width} height={18} /> }
+    const scritta = (s: string) => <Box flexDirection="column">{s.split('\n').map((x, i) => { const g = svgScritta(x, undefined, 300); return <Svg key={String(i)} source={g.source} alt={x} width={g.width} height={18} /> })}</Box>
     // Facts of the current job (since your last message): time active, tokens split chat/agents, steps.
     const tokAg = d.righe.reduce((a, r) => a + (r.tok || 0), 0)
     const parti = [`lavoro attivo da ${dur(d.el)}`, `${kt(d.tok)} token`, `chat ${kt(Math.max(0, d.tok - tokAg))}`, `agenti ${kt(tokAg)}`]
     if (d.tot > 0) parti.push(`passi ${d.fatti} di ${d.tot}`)
-    const r1 = parti.join(' · ')
+    const r1 = parti.slice(0, 2).join(' · ') + '\n' + parti.slice(2).join(' · ')
     // Whole session, and the cost estimate (same tokens all in Opus as the reference).
-    const r3 = [`${v === 'wf' ? 'workflow' : v === 'live' ? 'live' : 'chat'}${d.sel ? ' attiva ' + dur(d.sel) : ''}`, d.stok ? `${kt(d.stok)} token` : '', d.sag ? `${d.sag} agenti` : ''].filter(Boolean).join(' · ')
+    const r3 = [`${v === 'wf' ? 'workflow' : v === 'live' ? 'live' : 'chat'}${d.sel ? ' attiva ' + dur(d.sel) : ''}`, d.sag ? `${d.sag} agenti` : ''].filter(Boolean).join(' · ') + (d.stok ? `\n${kt(d.stok)} token` : '')
     // Saving in tokens, not money: tokens the agents did on models lower than Opus, and their share of the session.
     const bassi = ['light', 'medium', 'high'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0), 0)
     const r4 = bassi > 0 ? `risparmio ${kt(bassi)} token su modelli sotto Opus${d.stok ? ` (${bassi / d.stok < 0.001 ? 'meno dello 0,1' : (bassi / d.stok * 100).toFixed(1).replace('.', ',')}%)` : ''}` : ''
     const indice = indiceOtt(d)
-    const r5 = indice === null ? '' : `indice ottimizzazione ${indice}/100${bassi > 0 ? ` · risparmio ${kt(bassi)} token sotto Opus${d.stok ? ` (${bassi / d.stok < 0.001 ? '<0,1' : (bassi / d.stok * 100).toFixed(1).replace('.', ',')}%)` : ''}` : ''}`
+    const r5 = indice === null ? '' : `indice ottimizzazione ${indice}/100${bassi > 0 ? `\nrisparmio ${kt(bassi)} token sotto Opus${d.stok ? ` (${bassi / d.stok < 0.001 ? '<0,1' : (bassi / d.stok * 100).toFixed(1).replace('.', ',')}%)` : ''}` : ''}`
     const r2 = d.righe.length === 0 && d.interrotti === 0 ? 'Nessun agente: lavora solo la chat.' : ''
     const icona: Record<string, string> = { lavora: '▶', fermo: '⏸', completato: '✓' }
 
