@@ -44,7 +44,8 @@ function riga(d: Dati, compact: boolean) {
 // Desktop: the bar is drawn as SVG, so the type is small and even, every cell is the same size and the level is a pill.
 // shortcut: text widths are estimated (7.4 px per character at 13 px), so a very long label may sit a little loose.
 const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-const largo = (t: string) => Math.ceil([...t].length * 7.4)
+// Width per character at 13 px: capitals and digits are wider than lower case, spaces narrower.
+const largo = (t: string) => Math.ceil([...t].reduce((w, ch) => w + (ch === ' ' ? 3.8 : /[A-Z0-9%]/.test(ch) ? 8.8 : /[▶⏸✓✗↓↑]/.test(ch) ? 11 : 7.2), 0))
 const STILE = '<style>text{font:400 13px -apple-system,system-ui,sans-serif;fill:#55554f}.mu{fill:#8a8a84}.v{fill:#d6d6cf}@media(prefers-color-scheme:dark){text{fill:#c9c9d1}.mu{fill:#8d8d97}.v{fill:#3a3a42}}</style>'
 
 function svgRiga(d: Dati, tinta: boolean, compact: boolean) {
@@ -255,8 +256,8 @@ export const register: Register = (on, options) => {
               </Button>
             </Box>
           </Box>
-          {tasto('tendina', open ? '⬆' : '⬇', () => apriChiudi($))}
-          {tasto('pannello', '⬈', () => apriPannello($).catch(() => $.ui.toast('Gear: pannello non aperto')))}
+          {tasto('tendina', open ? '↑' : '↓', () => apriChiudi($))}
+          {tasto('pannello', '↗', () => apriPannello($).catch(() => $.ui.toast('Gear: pannello non aperto')))}
         </Box>
       </Box>
     )

@@ -77,6 +77,7 @@ def leggi(path):
             if (isinstance(c, str) and not c.startswith("<")) or (isinstance(c, list) and any(isinstance(x, dict) and x.get("type") == "text" for x in c) and not any(isinstance(x, dict) and x.get("type") == "tool_result" for x in c)):
                 ultimo = t
                 testo = c if isinstance(c, str) else " ".join(x.get("text", "") for x in c if isinstance(x, dict) and x.get("type") == "text")
+                testo = re.sub(r"<([a-z-]+)[^>]*>.*?</\1>", " ", testo, flags=re.S)  # via i blocchi di sistema (promemoria, comandi)
                 righe = [r.strip() for r in testo.splitlines() if r.strip() and not r.strip().startswith("<")]
                 ultimo_txt = righe[0] if righe else ultimo_txt
         if d.get("type") != "assistant" or not isinstance(m, dict):
@@ -195,7 +196,8 @@ def breve(r):
     lav = [x for x in ag if x["stato"] == "lavora"]
     vis = [x for x in ag if x["stato"] in ("lavora", "fermo")] + [x for x in ag if x["stato"] == "completato"][-5:]
     passo = next((t.get("activeForm") or t.get("content") for t in (todos or []) if t.get("status") == "in_progress"), None)
-    return dict(compito=(passo or m["ultimo_txt"])[:60], chat=m["ora_mod"], livello=r["livello"], dir=r["dir"], agenti=len(ag), fini=sum(1 for x in ag if x["fine"]), lavorano=len(lav),
+    # solo un passo vero dell'elenco: l'ultimo messaggio "utente" puo' essere di un'altra sessione o un avviso
+    return dict(compito=(passo or "")[:60], chat=m["ora_mod"], livello=r["livello"], dir=r["dir"], agenti=len(ag), fini=sum(1 for x in ag if x["fine"]), lavorano=len(lav),
                 fermi=sum(1 for x in ag if x["stato"] == "fermo"), completi=sum(1 for x in ag if x["fine"]),
                 interrotti=sum(1 for x in ag if x["stato"] == "interrotto"),
                 attivi=[dict(liv=x["liv"], tipo=x["tipo"], nome=x["nome"], desc=x["desc"][:40], model=x["model"]) for x in lav],
