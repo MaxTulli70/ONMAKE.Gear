@@ -7,7 +7,7 @@ import type { Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.46'
+const VERSIONE = '0.6.47'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -441,6 +441,14 @@ export const register: Register = (on, options) => {
     // Saving in tokens, not money: tokens the agents did on models lower than Opus, and their share of the session.
     const bassi = ['light', 'medium', 'high'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0), 0)
     const r4 = bassi > 0 ? `risparmio: ${kt(bassi)} token fatti da modelli più bassi di Opus${d.stok ? ` (${bassi / d.stok < 0.001 ? 'meno dello 0,1' : (bassi / d.stok * 100).toFixed(1).replace('.', ',')}% ${v === 'wf' ? 'del workflow' : 'della chat'})` : ''}` : ''
+    // Optimization index 0-100: how low the work ran. Weight per token: Haiku 1, Sonnet 2 (high 3), Opus 5; 0 = all Opus, 100 = all Haiku.
+    const W: Record<string, number> = { light: 1, medium: 2, high: 3, opus: 5 }
+    const pesoChat = /haiku/.test(d.chat) ? 1 : /sonnet/.test(d.chat) ? 2 : 5
+    const totI = d.stok || d.tok
+    const agI = ['light', 'medium', 'high', 'opus'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0), 0)
+    const pesato = ['light', 'medium', 'high', 'opus'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0) * W[k], 0) + Math.max(0, totI - agI) * pesoChat
+    const indice = totI ? Math.round((1 - pesato / (totI * 5)) / 0.8 * 100) : null
+    const r5 = indice === null ? '' : `indice di ottimizzazione ${Math.max(0, Math.min(100, indice))}/100 (0 = tutto in Opus, 100 = tutto in Haiku)`
     const r2 = d.righe.length === 0 && d.interrotti === 0 ? 'Nessun agente: lavora solo la chat.' : ''
     const icona: Record<string, string> = { lavora: '▶', fermo: '⏸', completato: '✓' }
 
@@ -475,6 +483,7 @@ export const register: Register = (on, options) => {
           {desk ? scritta(r1) : <Text dimColor>{r1}</Text>}
           {desk ? scritta(r3) : <Text dimColor>{r3}</Text>}
           {r4 ? (desk ? scritta(r4) : <Text dimColor>{r4}</Text>) : null}
+          {r5 ? (desk ? scritta(r5) : <Text dimColor>{r5}</Text>) : null}
           {desk && (d.stok || d.tok) ? (() => { const g = svgBarra(d.perliv ?? {}, d.stok || d.tok, tinta); return <Svg source={g.source} alt="chi ha usato i token" width={g.width} height={46} /> })() : null}
         </Box>
         {desk ? (() => { const g = svgGriglia(d.perliv ?? {}, tinta, d.livello); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={84} /></Box> })() : null}
