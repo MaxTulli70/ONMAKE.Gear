@@ -136,6 +136,12 @@ function svgAgente(x: { stato: string; liv: string; nome: string; dir: string; m
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="24" viewBox="0 0 ${w} 24">${STILE}${out.join('')}</svg>`, width: w }
 }
 
+// A plain label drawn like the bar, so it has the bar's text size.
+function svgScritta(s: string) {
+  const w = Math.ceil(largo(s) + 2)
+  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="24" viewBox="0 0 ${w} 24">${STILE}<text x="0" y="17" class="mu">${esc(s)}</text></svg>`, width: w }
+}
+
 async function apriSito($: EngineInterface) {
   const windows = (await $.env.get('OS')) === 'Windows_NT'
   const mac = !windows && (await $.process.run(['uname'])).stdout.trim() === 'Darwin'
@@ -343,12 +349,13 @@ export const register: Register = (on, options) => {
     const lista = await read($, sessioni)
     const sel = await read($, scelta)
     const cmd = await read($, comando)
+    const scritta = (s: string) => { const g = svgScritta(s); return <Svg source={g.source} alt={s} width={g.width} height={24} /> }
     const icona: Record<string, string> = { lavora: '▶', fermo: '⏸', completato: '✓' }
 
     return stack(
       <Box flexDirection="column" width={e.props.bodyColumns}>
         {testa}
-        {d.righe.length === 0 && d.interrotti === 0 && <Text dimColor>Nessun agente in questa sessione.</Text>}
+        {d.righe.length === 0 && d.interrotti === 0 && (desk ? scritta('Nessun agente in questa sessione.') : <Text dimColor>Nessun agente in questa sessione.</Text>)}
         {d.righe.map((x, i) => {
           if (!desk) return (
             <Text key={String(i)} wrap="truncate-end" dimColor={x.stato === 'completato'}>
@@ -362,13 +369,14 @@ export const register: Register = (on, options) => {
         {d.interrotti > 0 && <Text size="footnote" dimColor>✗ {d.interrotti} interrotti (mai finiti, fermi da oltre 1h)</Text>}
         <Box flexDirection="row" gap={2} flexWrap="wrap" alignItems="center">
           {lista.length > 0
-            ? <Select key="sessione" label="Sessione" options={lista.map(x => ({ value: x.id, label: x.nome || x.id.slice(0, 8) }))} value={sel || lista[0].id} onSelect={v => void update($, scelta, () => v)} />
+            ? <Box flexDirection="row" gap={1} alignItems="center">{desk ? scritta('Sessione') : null}<Select key="sessione" label={desk ? '' : 'Sessione'} options={lista.map(x => ({ value: x.id, label: x.nome || x.id.slice(0, 8) }))} value={sel || lista[0].id} onSelect={v => void update($, scelta, () => v)} /></Box>
             : tasto('ricarica', 'Carica sessioni ↻', () => caricaSessioni($))}
           {tasto('ferma', 'Ferma', () => azione($, 'ferma'), c('max'))}
           {tasto('riprendi', 'Riprendi', () => azione($, 'riprendi'), c('medium'))}
         </Box>
-        <Box width={e.props.bodyColumns} flexDirection="column">
-          <Input key="comando" rows={2} label="Comando" placeholder="Scrivi il comando per la sessione scelta e premi Invio" value={cmd} submitLabel="invia" onInput={v => void update($, comando, () => v)} onSubmit={v => void azione($, 'invia', v)} />
+        <Box width={e.props.bodyColumns} flexDirection="row" gap={1} alignItems="flex-start">
+          {desk ? scritta('Comando') : null}
+          <Input key="comando" rows={2} label={desk ? '' : 'Comando'} placeholder="Scrivi il comando per la sessione scelta e premi Invio" value={cmd} submitLabel="invia" onInput={v => void update($, comando, () => v)} onSubmit={v => void azione($, 'invia', v)} />
         </Box>
       </Box>,
     )
