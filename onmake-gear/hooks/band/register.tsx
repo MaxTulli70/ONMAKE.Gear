@@ -7,7 +7,7 @@ import type { Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.34'
+const VERSIONE = '0.6.35'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -153,15 +153,15 @@ function svgGriglia(pl: Record<string, [number, number]>, tinta: boolean, attual
   const liv = ['light', 'medium', 'high', 'opus']
   const righe = liv.map((k, i) => {
     const [n, tk] = pl[k] ?? [0, 0]
-    const y = 16 + i * 20
+    const y = 30 + i * 18
     const on = attuale === k || (attuale === 'max' && k === 'opus')
     return `<rect x="0" y="${y - 9}" width="8" height="8" rx="2" style="fill:${tinta ? COL[k] : GRIGIO}"/>`
       + `<text x="14" y="${y}" class="sm"${on ? ` style="fill:${tinta ? COL[k] : GRIGIO}"` : ''}>${k.toUpperCase()}</text>`
       + `<text x="84" y="${y}" class="mu" text-anchor="end">${n}</text>`
       + `<text x="168" y="${y}"${n ? '' : ' class="mu"'} text-anchor="end">${kt(tk)}</text>`
   })
-  const testa = `<text x="84" y="0" class="mu sm" text-anchor="end" dy="2">agenti</text><text x="168" y="0" class="mu sm" text-anchor="end" dy="2">token</text>`
-  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="172" height="92" viewBox="0 -8 172 92">${STILE}${testa}${righe.join('')}</svg>`, width: 172 }
+  const testa = `<text x="84" y="10" class="mu sm" text-anchor="end">agenti</text><text x="168" y="10" class="mu sm" text-anchor="end">token</text>`
+  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="172" height="92" viewBox="0 0 172 92">${STILE}${testa}${righe.join('')}</svg>`, width: 172 }
 }
 
 async function apriSito($: EngineInterface) {
@@ -409,8 +409,6 @@ export const register: Register = (on, options) => {
     return stack(
       <Box flexDirection="column" width={e.props.bodyColumns}>
         {testa}
-        <Box flexDirection="row" gap={3} alignItems="flex-start">
-        <Box flexDirection="column" flexGrow={1} flexShrink={1}>
         {r2 ? (desk ? scritta(r2) : <Text dimColor>{r2}</Text>) : null}
         {d.righe.map((x, i) => {
           if (!desk) return (
@@ -424,16 +422,18 @@ export const register: Register = (on, options) => {
         })}
         {d.interrotti > 0 && <Text size="footnote" dimColor>✗ {d.interrotti} interrotti (mai finiti, fermi da oltre 1h)</Text>}
         <Box width={e.props.bodyColumns} flexDirection="column">
-          <Input key="comando" rows={2} label="Comando" placeholder="Comando per la sessione scelta, poi Invio ↵" value={cmd} submitLabel="↵" onInput={v => void update($, comando, () => v)} onSubmit={v => void azione($, 'invia', v)} />
+          <Input key="comando" rows={1} label="Comando" placeholder="Comando per la sessione scelta, poi Invio ↵" value={cmd} submitLabel="↵" onInput={v => void update($, comando, () => v)} onSubmit={v => void azione($, 'invia', v)} />
         </Box>
+        <Box width={e.props.bodyColumns} flexDirection="row" justifyContent="space-between" alignItems="flex-start" gap={2}>
+        <Box flexDirection="column" flexShrink={1} gap={1}>
         <Box flexDirection="row" gap={2} flexWrap="wrap" alignItems="center">
           {lista.length > 0
             ? <Box flexDirection="row" gap={1} alignItems="center">{desk ? scritta('Sessione') : null}<Select key="sessione" label={desk ? '' : 'Sessione'} options={lista.map(x => ({ value: x.id, label: x.nome || x.id.slice(0, 8) }))} value={sel || lista[0].id} onSelect={v => void update($, scelta, () => v)} /></Box>
             : tasto('ricarica', 'Carica sessioni ↻', () => caricaSessioni($))}
           {tastino('ferma', 'Ferma', () => azione($, 'ferma'), c('max'))}
           {tastino('riprendi', 'Riprendi', () => azione($, 'riprendi'), c('medium'))}
-          {desk ? scritta(r1) : <Text dimColor>{r1}</Text>}
         </Box>
+          {desk ? scritta(r1) : <Text dimColor>{r1}</Text>}
         </Box>
         {desk ? (() => { const g = svgGriglia(d.perliv ?? {}, tinta, d.livello); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={92} /></Box> })() : null}
         </Box>
