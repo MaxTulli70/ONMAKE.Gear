@@ -59,6 +59,7 @@ def costo(model, v, P):
 def leggi(path):
     """-> dict(model, v=[in,out,cw,cr], a, b, tools, todos)"""
     msgs, ts, model, tools, todos = {}, [], "?", 0, None
+    quando, ultimo, todo_t = {}, None, None  # ora di ogni messaggio, ultimo messaggio dell'utente, ora dell'ultimo elenco passi
     for riga in open(path, errors="replace"):
         try:
             d = json.loads(riga)
@@ -68,6 +69,11 @@ def leggi(path):
         if t:
             ts.append(t)
         m = d.get("message")
+        # un messaggio vero dell'utente (testo, non il risultato di uno strumento) apre il lavoro attuale
+        if d.get("type") == "user" and isinstance(m, dict) and not d.get("isMeta") and not d.get("isSidechain") and t:
+            c = m.get("content")
+            if (isinstance(c, str) and not c.startswith("<")) or (isinstance(c, list) and any(isinstance(x, dict) and x.get("type") == "text" for x in c) and not any(isinstance(x, dict) and x.get("type") == "tool_result" for x in c)):
+                ultimo = t
         if d.get("type") != "assistant" or not isinstance(m, dict):
             continue
         if isinstance(m.get("content"), list):
@@ -75,13 +81,14 @@ def leggi(path):
                 if isinstance(c, dict) and c.get("type") == "tool_use":
                     tools += 1
                     if c.get("name") == "TodoWrite" and isinstance(c.get("input", {}).get("todos"), list):
-                        todos = c["input"]["todos"]
+                        todos, todo_t = c["input"]["todos"], t
         if not m.get("usage"):
             continue
         mod = m.get("model") if m.get("model") and m["model"] != "<synthetic>" else None
         u = m["usage"]
         v = [u.get(k) or 0 for k in ("input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")]
         i = m.get("id") or d.get("uuid")
+        quando.setdefault(i, t)
         msgs[i] = (mod or (msgs[i][0] if i in msgs else None), [max(a, b) for a, b in zip(v, msgs[i][1])] if i in msgs else v)
     # ogni messaggio conta col modello che l'ha scritto: una chat che cambia modello non va prezzata tutta con l'ultimo
     pm = {}
@@ -92,7 +99,12 @@ def leggi(path):
     model = max(pm, key=lambda k: sum(pm[k][:3])) if pm else "?"
     ts.sort()  # tempo attivo: gli intervalli fra due eventi sotto i 5 minuti (le pause lunghe non contano)
     att = sum(g for g in ((y - x).total_seconds() for x, y in zip(ts, ts[1:])) if g <= 300)
-    return dict(model=model, pm=pm, v=v, a=ts[0] if ts else None, b=ts[-1] if ts else None, tools=tools, todos=todos, att=att)
+    # lavoro attuale: dal tuo ultimo messaggio
+    vt = [sum(x[1][k] for i, x in msgs.items() if ultimo and quando.get(i) and quando[i] >= ultimo) for k in range(4)]
+    tt = [x for x in ts if ultimo and x >= ultimo]
+    att_t = sum(g for g in ((y - x).total_seconds() for x, y in zip(tt, tt[1:])) if g <= 300)
+    return dict(model=model, pm=pm, v=v, a=ts[0] if ts else None, b=ts[-1] if ts else None, tools=tools, todos=todos, att=att,
+                ultimo=ultimo, vt=vt, att_t=att_t, todo_t=todo_t)
 
 def sessione(cartella, sid):
     d = os.path.expanduser("~/.claude/projects/" + re.sub(r"[^A-Za-z0-9]", "-", cartella))
@@ -163,13 +175,24 @@ def riepilogo(sess):
                 attivi=attivi, fermi=fermi, ora=ora)
 
 def breve(r):
-    ag = r["ag"]
+    """Per la barra: solo il lavoro attuale, cioe' dal tuo ultimo messaggio (la sessione intera resta nel pannello)."""
+    m, u = r["main"], r["main"]["ultimo"]
+    ag = [x for x in r["ag"] if u is None or (x["b"] and x["b"] >= u)]
+    todos = m["todos"] if m["todos"] and m["todo_t"] and u and m["todo_t"] >= u else None
+    tot = len(todos) if todos else 0
+    fatti = sum(1 for t in (todos or []) if t.get("status") == "completed")
+    perc = fatti / tot if tot else None
+    el = m["att_t"]
+    eta = el * (1 - perc) / perc if perc and 0.05 <= perc < 1 else None
+    tok = sum(m["vt"][:3]) + sum(sum(x["v"][:3]) for x in ag)
+    lav = [x for x in ag if x["stato"] == "lavora"]
     vis = [x for x in ag if x["stato"] in ("lavora", "fermo")] + [x for x in ag if x["stato"] == "completato"][-5:]
-    return dict(livello=r["livello"], dir=r["dir"], agenti=len(ag), fini=sum(1 for x in ag if x["fine"]), lavorano=len(r["attivi"]), fermi=len(r["fermi"]),
-                completi=sum(1 for x in ag if x["fine"]), interrotti=sum(1 for x in ag if x["stato"] == "interrotto"),
-                attivi=[dict(liv=x["liv"], tipo=x["tipo"], nome=x["nome"], desc=x["desc"][:40], model=x["model"]) for x in r["attivi"]],
-                tok=r["tok"], cr=r["cr"], reale=round(r["reale"], 2), opus=round(r["opus"], 2), risp=r["risp"], perc=r["perc"],
-                fatti=r["fatti"], tot=r["tot"], el=int(r["el"]), eta=(int(r["eta"]) if r["eta"] else None),
+    return dict(livello=r["livello"], dir=r["dir"], agenti=len(ag), fini=sum(1 for x in ag if x["fine"]), lavorano=len(lav),
+                fermi=sum(1 for x in ag if x["stato"] == "fermo"), completi=sum(1 for x in ag if x["fine"]),
+                interrotti=sum(1 for x in ag if x["stato"] == "interrotto"),
+                attivi=[dict(liv=x["liv"], tipo=x["tipo"], nome=x["nome"], desc=x["desc"][:40], model=x["model"]) for x in lav],
+                tok=tok, cr=r["cr"], reale=round(r["reale"], 2), opus=round(r["opus"], 2), risp=r["risp"], perc=perc,
+                fatti=fatti, tot=tot, el=int(el), eta=(int(eta) if eta else None),
                 righe=[dict(liv=x["liv"], nome=x["nome"], tipo=x["tipo"], dir=x["dir"], model=x["model"], tok=x["v"][0] + x["v"][1] + x["v"][2], fine=x["fine"],
                             stato=x["stato"], ago=int(x["ago"] or 0), desc=x["desc"][:36]) for x in vis])
 
