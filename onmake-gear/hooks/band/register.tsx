@@ -7,7 +7,7 @@ import type { Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.57'
+const VERSIONE = '0.6.58'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -104,7 +104,7 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
     const nome = d.livello!.toUpperCase()
     out.push(`<text x="${x}" y="${Y}" class="sm"${tinta ? ` style="fill:${COL[d.livello!]}"` : ''}>${esc(nome)}</text>`)
     x += Math.ceil(largo(nome) * 0.85); sp(4)
-    if (d.dir === '▲' || d.dir === '▼') { t(d.dir, 'mu'); sp(2) }
+    if (d.dir === '▲' || d.dir === '▼') { t(d.dir === '▲' ? '↑ salita' : '↓ scesa', 'sm', tinta ? (d.dir === '▲' ? COL.high : COL.medium) : undefined); sp(2) }
   } else t('nessuna marcia', 'mu')
   // The model the chat is using now, e.g. 'opus-5-5' -> 'Opus 5.5'.
   // Model and effort the chat is using now, then the tokens of the current job per model.
@@ -196,6 +196,28 @@ function svgBarra(pl: Record<string, [number, number]>, tot: number, tinta: bool
     lx += 12 + largo(s) * 0.9 + 14
   }
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="46" viewBox="0 0 ${W} 46">${STILE}${out.join('')}</svg>`, width: W }
+}
+
+// Dashboard gauge: half dial with the 5 gears as coloured sectors, needle on the active one, arrow up/down.
+function svgCruscotto(livello: string | null, dir: string, tinta: boolean, lavora: boolean) {
+  const M = ['light', 'medium', 'high', 'opus', 'max'], cx = 60, cy = 58, R = 48
+  const pt = (a: number, r: number) => `${(cx + r * Math.cos(a)).toFixed(1)} ${(cy - r * Math.sin(a)).toFixed(1)}`
+  const k = livello ? M.indexOf(livello) : -1
+  const out: string[] = lavora ? [ANIM] : []
+  M.forEach((m, i) => {
+    const a0 = Math.PI - (i * Math.PI) / 5 - 0.03, a1 = Math.PI - ((i + 1) * Math.PI) / 5 + 0.03
+    const on = i === k
+    out.push(`<path d="M ${pt(a0, R)} A ${R} ${R} 0 0 1 ${pt(a1, R)}" style="fill:none;stroke:${tinta ? COL[m] : '#8a8a84'};stroke-width:${on ? 10 : 7};opacity:${on ? 1 : 0.35}"${on && lavora ? ' class="gp"' : ''}/>`)
+  })
+  if (k >= 0) {
+    const a = Math.PI - ((k + 0.5) * Math.PI) / 5
+    out.push(`<line x1="${cx}" y1="${cy}" x2="${pt(a, R - 12).replace(' ', '" y2="')}" style="stroke:#55554f;stroke-width:2.5;stroke-linecap:round"/>`)
+  }
+  out.push(`<circle cx="${cx}" cy="${cy}" r="4" style="fill:#55554f"/>`)
+  const nome = k >= 0 ? M[k].toUpperCase() : 'ferma'
+  out.push(`<text x="${cx}" y="${cy + 16}" text-anchor="middle" class="sm"${k >= 0 && tinta ? ` style="fill:${COL[M[k]]}"` : ''}>${nome}</text>`)
+  if (dir === '▲' || dir === '▼') out.push(`<text x="${cx + 34}" y="${cy + 16}" text-anchor="middle" style="fill:${tinta ? (dir === '▲' ? COL.high : COL.medium) : '#55554f'}">${dir === '▲' ? '↑' : '↓'}</text>`)
+  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80" viewBox="0 0 120 80">${STILE}${out.join('')}</svg>`, width: 120 }
 }
 
 // Grid of the 4 gears: colour, name, agents used and their tokens in this session.
@@ -532,6 +554,7 @@ export const register: Register = (on, options) => {
           {r5 ? (desk ? scritta(r5) : <Text dimColor>{r5}</Text>) : null}
           {desk && (d.stok || d.tok) ? (() => { const g = svgBarra(d.perliv ?? {}, d.stok || d.tok, tinta); return <Svg source={g.source} alt="chi ha usato i token" width={g.width} height={46} /> })() : null}
         </Box>
+        {desk ? (() => { const c = svgCruscotto(d.livello, d.dir, tinta, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0); return <Box flexShrink={0}><Svg source={c.source} alt="cruscotto marcia" width={c.width} height={80} /></Box> })() : null}
         {desk ? (() => { const g = svgGriglia(d.perliv ?? {}, tinta, d.livello); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={84} /></Box> })() : null}
         </Box>
         {desk ? <Box flexDirection="row" justifyContent="flex-end"><Svg source={`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="16" viewBox="0 0 80 16">${STILE}<text x="80" y="12" class="sm mu" text-anchor="end">Gear ${VERSIONE}</text></svg>`} alt={`Gear ${VERSIONE}`} width={80} height={16} /></Box> : <Text dimColor>Gear {VERSIONE}</Text>}
