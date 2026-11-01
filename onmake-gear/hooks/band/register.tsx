@@ -142,7 +142,7 @@ function svgAgente(x: { stato: string; liv: string; nome: string; dir: string; m
 
 // A plain label drawn like the bar, so it has the bar's text size.
 function svgScritta(s: string, col?: string) {
-  const w = Math.ceil(largo(s) + 2)
+  const w = Math.ceil(largo(s) * 1.08 + 8)
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="24" viewBox="0 0 ${w} 24">${STILE}<text x="0" y="17"${col ? ` style="fill:${col}"` : ' class="mu"'}>${esc(s)}</text></svg>`, width: w }
 }
 
@@ -422,8 +422,7 @@ export const register: Register = (on, options) => {
         })}
         {d.interrotti > 0 && <Text size="footnote" dimColor>✗ {d.interrotti} interrotti (mai finiti, fermi da oltre 1h)</Text>}
         <Box width={e.props.bodyColumns} flexDirection="column">
-          {desk ? scritta('Comando') : null}
-          <Input key="comando" rows={1} label={desk ? '\u200b' : 'Comando'} placeholder="Comando per la sessione scelta, poi Invio ↵" value={cmd} submitLabel="↵" onInput={v => void update($, comando, () => v)} onSubmit={v => void azione($, 'invia', v)} />
+          <Input key="comando" rows={2} label="Comando" placeholder="Comando per la sessione scelta, poi Invio ↵" value={cmd} submitLabel="↵" onInput={v => void update($, comando, () => v)} onSubmit={v => void azione($, 'invia', v)} />
         </Box>
         <Box flexDirection="row" gap={2} flexWrap="wrap" alignItems="center">
           {lista.length > 0
@@ -434,7 +433,7 @@ export const register: Register = (on, options) => {
           {desk ? scritta(r1) : <Text dimColor>{r1}</Text>}
         </Box>
         </Box>
-        {desk && d.perliv ? (() => { const g = svgGriglia(d.perliv, tinta, d.livello); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={92} /></Box> })() : null}
+        {desk ? (() => { const g = svgGriglia(d.perliv ?? {}, tinta, d.livello); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={92} /></Box> })() : null}
         </Box>
       </Box>,
     )
