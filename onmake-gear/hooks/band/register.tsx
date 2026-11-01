@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.61'
+const VERSIONE = '0.6.63'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -198,8 +198,9 @@ function svgAgente(x: { stato: string; liv: string; nome: string; dir: string; m
 }
 
 // A plain label drawn like the bar, so it has the bar's text size.
-function svgScritta(s: string, col?: string) {
-  const w = Math.ceil(largo(s) * 1.08 + 8)
+function svgScritta(s: string, col?: string, fisso = 0) {
+  // fisso: same width for every info line, so the app scales them all alike and the text stays one size
+  const w = fisso || Math.ceil(largo(s) * 1.08 + 8)
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="18" viewBox="0 0 ${w} 18">${STILE}<text x="0" y="13"${col ? ` style="fill:${col}"` : ' class="mu"'}>${esc(s)}</text></svg>`, width: w }
 }
 
@@ -516,7 +517,7 @@ export const register: Register = (on, options) => {
 
     const v = await read($, vista).catch(() => 'tot')
     const rs = await read($, reset).catch(() => '')
-    const scritta = (s: string) => { const g = svgScritta(s); return <Svg source={g.source} alt={s} width={g.width} height={18} /> }
+    const scritta = (s: string) => { const g = svgScritta(s, undefined, 480); return <Svg source={g.source} alt={s} width={g.width} height={18} /> }
     // Facts of the current job (since your last message): time active, tokens split chat/agents, steps.
     const tokAg = d.righe.reduce((a, r) => a + (r.tok || 0), 0)
     const parti = [`lavoro attivo da ${dur(d.el)}`, `${kt(d.tok)} token`, `chat ${kt(Math.max(0, d.tok - tokAg))}`, `agenti ${kt(tokAg)}`]
@@ -524,12 +525,11 @@ export const register: Register = (on, options) => {
     const r1 = parti.join(' · ')
     // Whole session, and the cost estimate (same tokens all in Opus as the reference).
     const r3 = [`${v === 'wf' ? 'workflow' : v === 'live' ? 'live' : 'chat'}${d.sel ? ' attiva ' + dur(d.sel) : ''}`, d.stok ? `${kt(d.stok)} token` : '', d.sag ? `${d.sag} agenti` : ''].filter(Boolean).join(' · ')
-    const r3b = d.cr ? `cache riletta ${kt(d.cr)} token` : ''
     // Saving in tokens, not money: tokens the agents did on models lower than Opus, and their share of the session.
     const bassi = ['light', 'medium', 'high'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0), 0)
     const r4 = bassi > 0 ? `risparmio ${kt(bassi)} token su modelli sotto Opus${d.stok ? ` (${bassi / d.stok < 0.001 ? 'meno dello 0,1' : (bassi / d.stok * 100).toFixed(1).replace('.', ',')}%)` : ''}` : ''
     const indice = indiceOtt(d)
-    const r5 = indice === null ? '' : `indice ottimizzazione ${indice}/100 (0 tutto Opus, 100 tutto Haiku)`
+    const r5 = indice === null ? '' : `indice ottimizzazione ${indice}/100${bassi > 0 ? ` · risparmio ${kt(bassi)} token sotto Opus${d.stok ? ` (${bassi / d.stok < 0.001 ? '<0,1' : (bassi / d.stok * 100).toFixed(1).replace('.', ',')}%)` : ''}` : ''}`
     const r2 = d.righe.length === 0 && d.interrotti === 0 ? 'Nessun agente: lavora solo la chat.' : ''
     const icona: Record<string, string> = { lavora: '▶', fermo: '⏸', completato: '✓' }
 
@@ -558,7 +558,7 @@ export const register: Register = (on, options) => {
         {pill('wf', rs ? `workflow da ${new Date(rs).toTimeString().slice(0, 5)}` : 'workflow')}
         {pill('tot', 'totale chat')}
         {chiede
-          ? <Box flexDirection="row" gap={2}>{desk ? scritta('azzerare il workflow da adesso?') : <Text dimColor>azzerare il workflow da adesso?</Text>}{piccolo('ok', 'OK', async () => { await update($, comando, () => ''); await azzera() }, COL.high)}{piccolo('no', 'annulla', () => update($, comando, () => ''))}</Box>
+          ? <Box flexDirection="row" gap={2}>{piccolo('q', 'azzerare il workflow da adesso?', () => undefined)}{piccolo('ok', 'OK', async () => { await update($, comando, () => ''); await azzera() }, COL.high)}{piccolo('no', 'annulla', () => update($, comando, () => ''))}</Box>
           : piccolo('reset', '↺ nuovo workflow', () => update($, comando, () => 'reset?'))}
       </Box>
     )
@@ -583,8 +583,6 @@ export const register: Register = (on, options) => {
         <Box flexDirection="column" flexShrink={1} gap={0}>
           {desk ? scritta(r1) : <Text dimColor>{r1}</Text>}
           {desk ? scritta(r3) : <Text dimColor>{r3}</Text>}
-          {r3b ? (desk ? scritta(r3b) : <Text dimColor>{r3b}</Text>) : null}
-          {r4 ? (desk ? scritta(r4) : <Text dimColor>{r4}</Text>) : null}
           {r5 ? (desk ? scritta(r5) : <Text dimColor>{r5}</Text>) : null}
           {desk && (d.stok || d.tok) ? (() => { const g = svgBarra(d.perliv ?? {}, d.stok || d.tok, tinta); return <Svg source={g.source} alt="chi ha usato i token" width={g.width} height={46} /> })() : null}
         </Box>
