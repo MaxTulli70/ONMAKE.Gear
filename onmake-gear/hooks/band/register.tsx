@@ -391,8 +391,8 @@ export const register: Register = (on, options) => {
         </Box>
         <Box width={e.props.bodyColumns} flexDirection="row" gap={1} alignItems="flex-start">
           {desk ? <Box flexShrink={0}>{scritta('Comando')}</Box> : null}
-          <Box flexGrow={1} flexShrink={1}>
-          <Input key="comando" rows={2} label={desk ? '' : 'Comando'} placeholder="Scrivi il comando per la sessione scelta e premi Invio" value={cmd} submitLabel="invia" onInput={v => void update($, comando, () => v)} onSubmit={v => void azione($, 'invia', v)} />
+          <Box flexGrow={1} flexShrink={1} flexDirection="column" alignItems="stretch">
+          <Input key="comando" rows={2} label={desk ? '' : 'Comando'} placeholder="Comando per la sessione scelta ↵" value={cmd} submitLabel="↵" onInput={v => void update($, comando, () => v)} onSubmit={v => void azione($, 'invia', v)} />
           </Box>
         </Box>
       </Box>,
