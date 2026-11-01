@@ -7,7 +7,7 @@ import type { Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.48'
+const VERSIONE = '0.6.49'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -148,11 +148,6 @@ function svgAgente(x: { stato: string; liv: string; nome: string; dir: string; m
 }
 
 // A plain label drawn like the bar, so it has the bar's text size.
-function svgPillola(s: string, on: boolean) {
-  const w = Math.ceil(largo(s) * 1.08 + 20)
-  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="22" viewBox="0 0 ${w} 22">${STILE}<rect x="0.5" y="0.5" width="${w - 1}" height="21" rx="10.5" style="fill:${on ? '#55554f' : 'none'};stroke:${on ? '#55554f' : '#c9c9c2'}"/><text x="${w / 2}" y="15" text-anchor="middle"${on ? ' style="fill:#ffffff"' : ' class="mu"'}>${esc(s)}</text></svg>`, width: w }
-}
-
 function svgScritta(s: string, col?: string) {
   const w = Math.ceil(largo(s) * 1.08 + 8)
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="18" viewBox="0 0 ${w} 18">${STILE}<text x="0" y="13"${col ? ` style="fill:${col}"` : ' class="mu"'}>${esc(s)}</text></svg>`, width: w }
@@ -463,24 +458,16 @@ export const register: Register = (on, options) => {
 
     const scegli = async (x: string) => { await update($, vista, () => x); last = 0; await ricarica($).catch(() => undefined) }
     const azzera = async () => { const ora = new Date(await $.clock.now()).toISOString(); await update($, reset, () => ora); await scegli('wf'); $.ui.toast('Gear: workflow azzerato da adesso') }
-    const pill = (k: string, s: string) => {
-      if (!desk) return tasto(k, v === k ? `[${s}]` : s, () => scegli(k))
-      const g = svgPillola(s, v === k)
-      return (
-        <Box key={k} position="relative">
-          <Svg source={g.source} alt={s} width={g.width} height={22} />
-          <Box position="absolute" top={0} left={0} right={0} bottom={0} justifyContent="center" alignItems="center" overflow="hidden">
-            <Button key={k} plain onPress={() => scegli(k)}><Text>{'\u2002'}</Text></Button>
-          </Box>
-        </Box>
-      )
-    }
+    // Real buttons: the chosen view is the primary one (no drawing laid over a button, which showed its focus box).
+    const pill = (k: string, s: string) => desk
+      ? <Button key={k} variant={v === k ? 'primary' : 'secondary'} onPress={() => scegli(k)}>{s}</Button>
+      : tasto(k, v === k ? `[${s}]` : s, () => scegli(k))
     const sel = (
       <Box flexDirection="row" gap={1} alignItems="center">
-        {pill('live', '● live')}
+        {pill('live', 'live')}
         {pill('wf', rs ? `workflow da ${new Date(rs).toTimeString().slice(0, 5)}` : 'workflow')}
         {pill('tot', 'totale chat')}
-        {tastino('reset', '↺ nuovo workflow', azzera)}
+        {desk ? <Button key="reset" variant="secondary" onPress={azzera}>↺ nuovo workflow</Button> : tasto('reset', '↺ nuovo workflow', azzera)}
       </Box>
     )
 
