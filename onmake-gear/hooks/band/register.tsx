@@ -7,7 +7,7 @@ import type { Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.38'
+const VERSIONE = '0.6.39'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -145,7 +145,7 @@ function svgAgente(x: { stato: string; liv: string; nome: string; dir: string; m
 // A plain label drawn like the bar, so it has the bar's text size.
 function svgScritta(s: string, col?: string) {
   const w = Math.ceil(largo(s) * 1.08 + 8)
-  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="24" viewBox="0 0 ${w} 24">${STILE}<text x="0" y="17"${col ? ` style="fill:${col}"` : ' class="mu"'}>${esc(s)}</text></svg>`, width: w }
+  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="18" viewBox="0 0 ${w} 18">${STILE}<text x="0" y="13"${col ? ` style="fill:${col}"` : ' class="mu"'}>${esc(s)}</text></svg>`, width: w }
 }
 
 // Grid of the 4 gears: colour, name, agents used and their tokens in this session.
@@ -154,7 +154,7 @@ function svgGriglia(pl: Record<string, [number, number]>, tinta: boolean, attual
   const mod: Record<string, string> = { light: 'Haiku', medium: 'Sonnet', high: 'Sonnet', opus: 'Opus' }
   const righe = liv.map((k, i) => {
     const [n, tk] = pl[k] ?? [0, 0]
-    const y = 30 + i * 18
+    const y = 28 + i * 16
     const on = attuale === k || (attuale === 'max' && k === 'opus')
     return `<rect x="0" y="${y - 9}" width="8" height="8" rx="2" style="fill:${tinta ? COL[k] : GRIGIO}"/>`
       + `<text x="14" y="${y}" class="sm"${on ? ` style="fill:${tinta ? COL[k] : GRIGIO}"` : ''}>${k.toUpperCase()}</text>`
@@ -163,7 +163,7 @@ function svgGriglia(pl: Record<string, [number, number]>, tinta: boolean, attual
       + `<text x="254" y="${y}"${n ? '' : ' class="mu"'} text-anchor="end">${kt(tk)}</text>`
   })
   const testa = `<text x="86" y="10" class="mu sm">modello</text><text x="170" y="10" class="mu sm" text-anchor="end">agenti</text><text x="254" y="10" class="mu sm" text-anchor="end">token</text>`
-  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="258" height="92" viewBox="0 0 258 92">${STILE}${testa}${righe.join('')}</svg>`, width: 258 }
+  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="258" height="84" viewBox="0 0 258 84">${STILE}${testa}${righe.join('')}</svg>`, width: 258 }
 }
 
 async function apriSito($: EngineInterface) {
@@ -404,7 +404,7 @@ export const register: Register = (on, options) => {
     if (!open) return stack(testa)
 
     const cmd = await read($, comando)
-    const scritta = (s: string) => { const g = svgScritta(s); return <Svg source={g.source} alt={s} width={g.width} height={24} /> }
+    const scritta = (s: string) => { const g = svgScritta(s); return <Svg source={g.source} alt={s} width={g.width} height={18} /> }
     // Facts of the current job (since your last message): time active, tokens split chat/agents, steps.
     const tokAg = d.righe.reduce((a, r) => a + (r.tok || 0), 0)
     const parti = [`lavoro attivo da ${dur(d.el)}`, `${kt(d.tok)} token`, `chat ${kt(Math.max(0, d.tok - tokAg))}`, `agenti ${kt(tokAg)}`]
@@ -435,7 +435,7 @@ export const register: Register = (on, options) => {
           <Input key="comando" rows={1} label="Comando" placeholder="Comando per questa chat, poi Invio ↵" value={cmd} submitLabel="↵" onInput={v => void update($, comando, () => v)} onSubmit={v => void azione($, 'invia', v)} />
         </Box>
         <Box width={e.props.bodyColumns} flexDirection="row" justifyContent="flex-start" alignItems="flex-start" gap={4}>
-        <Box flexDirection="column" flexShrink={1} gap={1}>
+        <Box flexDirection="column" flexShrink={1} gap={0}>
         <Box flexDirection="row" gap={2} flexWrap="wrap" alignItems="center">
           {tastino('ferma', 'Ferma', () => azione($, 'ferma'), c('max'))}
           {tastino('riprendi', 'Riprendi', () => azione($, 'riprendi'), c('medium'))}
@@ -445,7 +445,7 @@ export const register: Register = (on, options) => {
           {desk ? scritta(r3) : <Text dimColor>{r3}</Text>}
           {r4 ? (desk ? scritta(r4) : <Text dimColor>{r4}</Text>) : null}
         </Box>
-        {desk ? (() => { const g = svgGriglia(d.perliv ?? {}, tinta, d.livello); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={92} /></Box> })() : null}
+        {desk ? (() => { const g = svgGriglia(d.perliv ?? {}, tinta, d.livello); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={84} /></Box> })() : null}
         </Box>
         {desk ? <Box flexDirection="row" justifyContent="flex-end"><Svg source={`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="16" viewBox="0 0 80 16">${STILE}<text x="80" y="12" class="sm mu" text-anchor="end">Gear ${VERSIONE}</text></svg>`} alt={`Gear ${VERSIONE}`} width={80} height={16} /></Box> : <Text dimColor>Gear {VERSIONE}</Text>}
       </Box>,
