@@ -45,7 +45,7 @@ function riga(d: Dati, compact: boolean) {
 // shortcut: text widths are estimated (7.4 px per character at 13 px), so a very long label may sit a little loose.
 const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const largo = (t: string) => Math.ceil([...t].length * 7.4)
-const STILE = '<style>text{font:500 13px -apple-system,system-ui,sans-serif;fill:#55554f}.mu{fill:#8a8a84}.v{fill:#d6d6cf}.pl{font-weight:650;fill:#1c1c1a}@media(prefers-color-scheme:dark){text{fill:#c9c9d1}.mu{fill:#8d8d97}.v{fill:#3a3a42}}</style>'
+const STILE = '<style>text{font:400 13px -apple-system,system-ui,sans-serif;fill:#55554f}.mu{fill:#8a8a84}.v{fill:#d6d6cf}.pl{font-weight:500;fill:#1c1c1a}@media(prefers-color-scheme:dark){text{fill:#c9c9d1}.mu{fill:#8d8d97}.v{fill:#3a3a42}}</style>'
 
 function svgRiga(d: Dati, tinta: boolean, compact: boolean) {
   const out: string[] = []
@@ -241,7 +241,7 @@ export const register: Register = (on, options) => {
           {/* A button takes only text and the app does not follow a link inside an SVG, so a transparent button lies over the logo and opens the site. */}
           <Box position="relative">
             <Svg source={LOGO} alt="ONMAKE" width={32} height={34} />
-            <Box position="absolute" top={0} left={0}>
+            <Box position="absolute" top={0} left={0} right={0} bottom={0} justifyContent="center" alignItems="center">
               <Button key="onmake" plain onPress={() => apriSito($).catch(() => $.ui.toast('Gear: sito non aperto'))}>
                 <Text>{'\u2003\u2003'}</Text>
               </Button>
