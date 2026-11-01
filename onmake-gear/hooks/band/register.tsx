@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.60'
+const VERSIONE = '0.6.61'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -75,6 +75,23 @@ function indiceOtt(d: Dati) {
 
 const ANIM = '<style>@keyframes gs{0%{transform:translateX(-14px)}100%{transform:translateX(44px)}}.gs{animation:gs 1.1s linear infinite}@keyframes gp{50%{opacity:.3}}.gp{animation:gp 1s ease-in-out infinite}</style>'
 
+// Plain words for what a tool is doing, instead of the raw command.
+const SPIEGA: [RegExp, string][] = [
+  [/^(ssh|scp|rsync)\b/, 'lavora su un server'], [/^git (push|pull|fetch)/, 'sincronizza con GitHub'], [/^git /, 'usa git'],
+  [/^(npm|npx|pnpm|yarn|bun) (test|run test)|pytest|plugin test/, 'esegue le prove'], [/^(npm|pnpm|yarn|bun) (run )?build/, 'compila'],
+  [/^(npm|pnpm|yarn) (i|install)|pip install/, 'installa pacchetti'], [/^(curl|wget)\b/, 'scarica o chiama un indirizzo web'],
+  [/^(grep|rg|find|ls)\b/, 'cerca file'], [/^(cat|head|tail|sed -n)\b/, 'legge file'], [/^python3?\b/, 'esegue uno script Python'],
+  [/^claude plugin/, 'aggiorna i plugin'], [/^(docker|systemctl)\b/, 'gestisce un servizio'],
+]
+const STRUMENTI: Record<string, string> = { Read: 'legge', Edit: 'modifica', Write: 'scrive', Grep: 'cerca nel codice', Glob: 'cerca file', WebFetch: 'legge una pagina web', WebSearch: 'cerca sul web', Agent: 'avvia un agente', TodoWrite: 'aggiorna i passi' }
+function spiega(ora: Attivo) {
+  const base = ora.tool.replace(/^agente: /, '')
+  const chi = ora.tool.startsWith('agente: ') ? 'agente: ' : ''
+  if (base === 'Bash') { const m = SPIEGA.find(([re]) => re.test(ora.cosa.trim())); return { cosa: chi + (m ? m[1] : 'esegue un comando'), dove: '' } }
+  if (base.startsWith('mcp__')) return { cosa: chi + 'usa ' + base.split('__')[1], dove: '' }
+  return { cosa: chi + (STRUMENTI[base] ?? base), dove: ora.cosa }
+}
+
 function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lavora = false, ora: Attivo | null = null, adesso = 0) {
   const out: string[] = lavora ? [ANIM] : []
   let x = 0
@@ -111,7 +128,7 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
   sep()
   if (lavora && ora) {
     out.push(`<circle cx="${x + 4}" cy="12" r="3.5" class="gp" style="fill:${tinta ? COL[d.livello ?? 'medium'] ?? '#5c82a8' : '#55554f'}"/>`); sp(12)
-    t(ora.tool, '', tinta ? '#3a3a36' : undefined); if (ora.cosa) { sp(5); t(ora.cosa.slice(0, 34), 'mu') }
+    const sp2 = spiega(ora); t(sp2.cosa, '', tinta ? '#3a3a36' : undefined); if (sp2.dove) { sp(5); t(sp2.dove.slice(0, 30), 'mu') }
     const sec = adesso && ora.t0 ? Math.max(0, Math.round((adesso - ora.t0) / 1000)) : 0
     if (sec) { sp(5); t(dur(sec), 'mu') }
   } else t(lavora ? 'pensa…' : 'pronto', 'mu')
