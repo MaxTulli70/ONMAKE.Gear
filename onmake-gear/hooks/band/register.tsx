@@ -68,6 +68,8 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean) {
   out.push(`<rect x="0" y="2" width="${pw}" height="20" rx="10" style="fill:${d.livello && tinta ? COL[d.livello] : '#d6d6cf'}"/>`)
   out.push(`<text x="7" y="${Y}" class="pl">${esc(pill)}</text>`)
   x = pw
+  // The model the chat is using now, e.g. 'opus-5-5' -> 'Opus 5.5'.
+  if (d.chat) { const [f, ...v] = d.chat.split('-'); sp(8); t(`${f.charAt(0).toUpperCase()}${f.slice(1)} ${v.join('.')}`, 'mu') }
   sep(); t(`${kt(d.tok)} tok`, 'mu')
   if (!compact) {
     // Only what is useful now: the current job (since your last message); counts at zero and a missing task list are left out.
@@ -77,6 +79,9 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean) {
       sep(); t('agenti', 'mu'); sp(5)
       vivi.forEach(([k, g, col], i) => { if (i) sp(6); t(`${g} ${k}`, col ? '' : 'mu', tinta ? col : undefined) })
     }
+    // What the working agent is doing, in its gear color.
+    const a0 = d.attivi[0]
+    if (a0) { sep(); t(`${a0.nome}: ${a0.desc.slice(0, 38)}`, '', tinta ? COL[a0.liv] ?? GRIGIO : undefined) }
     if (d.perc !== null) { sep(); celle(d.perc, COL.medium); t(`${Math.round(d.perc * 100)}% (${d.fatti}/${d.tot} passi)`) }
     // Time only as an estimate of what is left, when a task list allows one; a bare timer told nothing.
     if (d.eta !== null) { sep(); t(`restano ~${dur(d.eta)}`, '', tinta ? COL.high : undefined) }

@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 const DATI = {
-  livello: 'medium', dir: '▲', agenti: 3, fini: 1, lavorano: 1, fermi: 1, interrotti: 0, completi: 1,
+  chat: 'opus-5-5', livello: 'medium', dir: '▲', agenti: 3, fini: 1, lavorano: 1, fermi: 1, interrotti: 0, completi: 1,
   attivi: [{ liv: 'high', tipo: 'gear-high', nome: 'high', desc: 'x', model: 'sonnet-5-5' }],
   tok: 1500000, cr: 0, reale: 1, opus: 2, risp: 0.5, perc: 0.4, fatti: 2, tot: 5, el: 600, eta: 900,
   righe: [{ liv: 'high', dir: '▲', model: 'sonnet-5-5', tok: 1000, fine: false, stato: 'lavora', ago: 5, tipo: 'gear-high', nome: 'high', desc: 'job' }],
@@ -33,6 +33,7 @@ test('desktop: the bar is an Svg with the level and the share', async ($, on) =>
   const svg = await ui.find({ type: 'Svg' })
   expect((svg?.props as { source?: string })?.source).toContain('MEDIUM')
   expect((svg?.props as { source?: string })?.source).toContain('40%')
+  expect((svg?.props as { source?: string })?.source).toContain('Opus 5.5')
   expect(await ui.find({ key: 'onmake' })).toBeTruthy()
   expect(await ui.find({ key: 'tendina' })).toBeTruthy()
   expect(await ui.find({ key: 'pannello' })).toBeTruthy()

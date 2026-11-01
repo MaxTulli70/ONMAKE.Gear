@@ -1,6 +1,7 @@
 export type Riga = { liv: string; nome: string; tipo: string; dir: string; model: string; tok: number; fine: boolean; stato: string; ago: number; desc: string }
 export type Sessione = { id: string; nome: string }
 export type Dati = {
+  chat: string
   livello: string | null
   dir: string
   agenti: number

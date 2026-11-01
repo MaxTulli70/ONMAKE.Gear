@@ -59,6 +59,7 @@ def costo(model, v, P):
 def leggi(path):
     """-> dict(model, v=[in,out,cw,cr], a, b, tools, todos)"""
     msgs, ts, model, tools, todos = {}, [], "?", 0, None
+    ora_mod = None  # modello dell'ultimo messaggio: quello che la chat usa adesso
     quando, ultimo, todo_t = {}, None, None  # ora di ogni messaggio, ultimo messaggio dell'utente, ora dell'ultimo elenco passi
     for riga in open(path, errors="replace"):
         try:
@@ -85,6 +86,8 @@ def leggi(path):
         if not m.get("usage"):
             continue
         mod = m.get("model") if m.get("model") and m["model"] != "<synthetic>" else None
+        if mod:
+            ora_mod = mod
         u = m["usage"]
         v = [u.get(k) or 0 for k in ("input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")]
         i = m.get("id") or d.get("uuid")
@@ -104,7 +107,7 @@ def leggi(path):
     tt = [x for x in ts if ultimo and x >= ultimo]
     att_t = sum(g for g in ((y - x).total_seconds() for x, y in zip(tt, tt[1:])) if g <= 300)
     return dict(model=model, pm=pm, v=v, a=ts[0] if ts else None, b=ts[-1] if ts else None, tools=tools, todos=todos, att=att,
-                ultimo=ultimo, vt=vt, att_t=att_t, todo_t=todo_t)
+                ultimo=ultimo, vt=vt, att_t=att_t, todo_t=todo_t, ora_mod=(ora_mod or "").replace("claude-", ""))
 
 def sessione(cartella, sid):
     d = os.path.expanduser("~/.claude/projects/" + re.sub(r"[^A-Za-z0-9]", "-", cartella))
@@ -187,7 +190,7 @@ def breve(r):
     tok = sum(m["vt"][:3]) + sum(sum(x["v"][:3]) for x in ag)
     lav = [x for x in ag if x["stato"] == "lavora"]
     vis = [x for x in ag if x["stato"] in ("lavora", "fermo")] + [x for x in ag if x["stato"] == "completato"][-5:]
-    return dict(livello=r["livello"], dir=r["dir"], agenti=len(ag), fini=sum(1 for x in ag if x["fine"]), lavorano=len(lav),
+    return dict(chat=m["ora_mod"], livello=r["livello"], dir=r["dir"], agenti=len(ag), fini=sum(1 for x in ag if x["fine"]), lavorano=len(lav),
                 fermi=sum(1 for x in ag if x["stato"] == "fermo"), completi=sum(1 for x in ag if x["fine"]),
                 interrotti=sum(1 for x in ag if x["stato"] == "interrotto"),
                 attivi=[dict(liv=x["liv"], tipo=x["tipo"], nome=x["nome"], desc=x["desc"][:40], model=x["model"]) for x in lav],
