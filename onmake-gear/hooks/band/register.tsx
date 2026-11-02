@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.96'
+const VERSIONE = '0.6.97'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -498,7 +498,11 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
   else if (d.tok > 0) { sep(); t(`${kt(d.tok)} tk`, 'mu') }
   // Whole session: all tokens so far and how many agents it has used.
   const io = indiceOtt(d)
-  if (io !== null) { sep(); t(tr('indice'), 'mu'); sp(4); t(`${io}/100`, '', tinta ? (io >= 50 ? COL.medium : io >= 20 ? COL.high : '#c0714f') : undefined) }
+  if (io !== null) { sep()
+    const ci = tinta ? (io >= 50 ? COL.medium : io >= 20 ? COL.high : '#c0714f') : '#8a8a84'
+    // Small bar filled to the index, so the number reads as a score out of 100 without the word.
+    out.push(`<rect x="${x}" y="8" width="40" height="8" rx="3" class="v"/><rect x="${x}" y="8" width="${Math.max(2, io * 0.4)}" height="8" rx="3" style="fill:${ci}"/>`)
+    x += 46; t(`${io}/100`, '', tinta ? ci : undefined) }
   if (!compact) {
     // Only what is useful now: the current job (since your last message); counts at zero and a missing task list are left out.
     const n: [number, string, string | undefined][] = [[d.lavorano, '▶', COL.medium], [d.fermi, '⏸', COL.high], [d.completi, '✓', undefined], [d.interrotti, '✗', undefined]]
