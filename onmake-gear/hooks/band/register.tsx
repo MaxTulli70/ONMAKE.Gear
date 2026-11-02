@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.95'
+const VERSIONE = '0.6.96'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -493,9 +493,9 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
   // Model and effort the chat is using now, then the tokens of the current job per model.
   const mod = p?.model || d.chat
   // Tokens of the current job per model; nothing while the job has used none yet.
-  if (lavora && vivoTok > 0) { sep(); t(nomeModello(mod || d.chat).split(' ')[0], '', tinta ? colMod(mod || d.chat) : undefined); sp(4); t(`${kt(conta('vivo', vivoTok))} ${tr('token')}`) }
-  else if (d.tokmod && d.tokmod.length > 0) { sep(); d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); t(nomeModello(m).split(' ')[0], '', tinta ? colMod(m) : undefined); sp(4); t(`${kt(n)} ${tr('token')}`) }) }
-  else if (d.tok > 0) { sep(); t(`${kt(d.tok)} ${tr('token')}`, 'mu') }
+  if (lavora && vivoTok > 0) { sep(); t(nomeModello(mod || d.chat).split(' ')[0], '', tinta ? colMod(mod || d.chat) : undefined); sp(4); t(`${kt(conta('vivo', vivoTok))} tk`) }
+  else if (d.tokmod && d.tokmod.length > 0) { sep(); d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); t(nomeModello(m).split(' ')[0], '', tinta ? colMod(m) : undefined); sp(4); t(`${kt(n)} tk`) }) }
+  else if (d.tok > 0) { sep(); t(`${kt(d.tok)} tk`, 'mu') }
   // Whole session: all tokens so far and how many agents it has used.
   const io = indiceOtt(d)
   if (io !== null) { sep(); t(tr('indice'), 'mu'); sp(4); t(`${io}/100`, '', tinta ? (io >= 50 ? COL.medium : io >= 20 ? COL.high : '#c0714f') : undefined) }
@@ -507,7 +507,7 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
     if (vivi.length > 0 || tokAg > 0) {
       sep(); t(tr('agenti'), 'mu'); sp(5)
       vivi.forEach(([k, g, col], i) => { if (i) sp(6); t(`${g} ${k}`, col ? '' : 'mu', tinta ? col : undefined) })
-      if (tokAg > 0) { sp(8); t(`${kt(tokAg)} ${tr('token')}`) }
+      if (tokAg > 0) { sp(8); t(`${kt(tokAg)} tk`) }
     }
     // Who is working now and on what: the working agent and its task, else the main chat and the current step or your last request.
     const a0 = d.attivi[0]
@@ -540,7 +540,7 @@ function svgAgente(x: { stato: string; liv: string; nome: string; dir: string; m
   px += 10
   if (x.stato === 'fermo') { t(`${tr('fermo da')} ${dur(x.ago)}`, '', tinta ? COL.high : undefined); px += 10 }
   t(nomeModello(x.model), 'mu'); px += 10
-  t(`${kt(x.tok)} ${tr('token')}`, 'mu'); px += 10
+  t(`${kt(x.tok)} tk`, 'mu'); px += 10
   t(x.desc, x.stato === 'completato' ? 'mu' : '')
   const w = Math.ceil(px + 2)
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="24" viewBox="0 0 ${w} 24">${STILE}${out.join('')}</svg>`, width: w }
