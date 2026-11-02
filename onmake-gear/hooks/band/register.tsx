@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.93'
+const VERSIONE = '0.6.94'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -490,14 +490,6 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
   // The model the chat is using now, e.g. 'opus-5-5' -> 'Opus 5.5'.
   // Model and effort the chat is using now, then the tokens of the current job per model.
   const mod = p?.model || d.chat
-  if (mod) { sep(); t(tr('chat'), 'mu'); sp(5); t(nomeModello(mod), '', tinta ? colMod(mod, p?.effort) : undefined); if (p?.effort) {
-    // Effort meter: 4 steps low, medium, high, max; while working a light band runs across it.
-    sp(6)
-    const liv = Math.max(1, ['low', 'medium', 'high', 'max'].indexOf(p.effort) + 1)
-    const col = tinta ? colMod(mod, p.effort) : '#8a8a84'
-    out.push(`<clipPath id="ef"><rect x="${x}" y="8" width="40" height="8" rx="3"/></clipPath><rect x="${x}" y="8" width="40" height="8" rx="3" class="v"/><rect x="${x}" y="8" width="${liv * 10}" height="8" rx="3" style="fill:${col}"/>`)
-    x += 44; t(p.effort, 'mu')
-  } }
   // Tokens of the current job per model; nothing while the job has used none yet.
   if (lavora && vivoTok > 0) { sep(); t(nomeModello(mod || d.chat).split(' ')[0], '', tinta ? colMod(mod || d.chat) : undefined); sp(4); t(`${kt(conta('vivo', vivoTok))} ${tr('token')}`) }
   else if (d.tokmod && d.tokmod.length > 0) { sep(); d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); t(nomeModello(m).split(' ')[0], '', tinta ? colMod(m) : undefined); sp(4); t(`${kt(n)} ${tr('token')}`) }) }
