@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.97'
+const VERSIONE = '0.6.98'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -34,7 +34,9 @@ async function home($: EngineInterface) {
 }
 
 // Runs the script on this session's transcript; the answer is a few hundred bytes of JSON.
+let giro = 0 // a slow older read must not overwrite the numbers of a newer one (e.g. right after a reset)
 async function ricarica($: EngineInterface) {
+  const mio = ++giro
   const script = `${$.plugin.root}/scripts/pannello.py`
   // Workflow view: only what came after the partial reset (or after the start, if never reset).
   const vv = await read($, vista).catch(() => 'tot')
@@ -42,6 +44,7 @@ async function ricarica($: EngineInterface) {
   const r = await $.process.run(['python3', script, '--cartella', await $.session.cwd(), '--sessione', await $.session.id(), '--json', ...(da ? ['--da', da] : [])])
   if (r.exitCode !== 0) return undefined
   const d = JSON.parse(r.stdout) as Dati
+  if (mio !== giro) return d
   carLetto = car
   await update($, dati, () => d)
   return d
