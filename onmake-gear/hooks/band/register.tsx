@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.120'
+const VERSIONE = '0.6.121'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -504,16 +504,18 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
     out.push(`<text x="${Wb / 2}" y="24" text-anchor="middle" style="font-size:8px;letter-spacing:.1px${tinta ? `;fill:${COL[d.livello!]}` : ''}">${esc(nome)}</text>`)
     if (d.dir === '▲' || d.dir === '▼') { t(d.dir === '▲' ? '↑' : '↓', 'sm', tinta ? (d.dir === '▲' ? COL.high : COL.medium) : undefined); sp(2) }
   } else t(tr('nessuna marcia'), 'mu')
-  // Two lines, one per job: what runs right now (tool, target, time) above, the agent or chat task below.
+  // Two lines, each 'text | other data': work in progress | time, then place (file, target, task) | who does it.
   const a0 = d.attivi[0]
-  const riga2 = compact ? '' : a0 ? `▶ ${a0.nome}: ${a0.desc.slice(0, 40)}` : d.compito ? `${tr('chat')}: ${d.compito.slice(0, 48)}` : ''
+  const chi = a0 ? `${a0.nome} ${nomeModello(a0.model)}` : tr('chat')
   let riga1 = tr('pronto')
+  let riga2 = compact ? '' : a0 ? `${a0.desc.slice(0, 40)} | ${chi}` : d.compito ? `${d.compito.slice(0, 40)} | ${chi}` : ''
   if (lavora && ora) {
     const sp2 = spiega(ora), sec = adesso && ora.t0 ? Math.max(0, Math.round((adesso - ora.t0) / 1000)) : 0
-    riga1 = `${sp2.cosa}${sp2.dove ? ' ' + sp2.dove.slice(0, 30) : ''}${sec ? ' ' + dur(sec) : ''}`
+    riga1 = `${sp2.cosa}${sec ? ' | ' + dur(sec) : ''}`
+    if (!compact && sp2.dove) riga2 = `${sp2.dove.slice(0, 34)} | ${chi}`
   } else if (lavora) {
     const s0 = adesso && inizioTurno ? Math.max(0, Math.round((adesso - Date.parse(inizioTurno)) / 1000)) : 0
-    riga1 = `${tr('pensa…')}${s0 ? ' ' + dur(s0) : ''}`
+    riga1 = `${tr('pensa…')}${s0 ? ' | ' + dur(s0) : ''}`
   }
   if (riga2) {
     const col2 = a0 && tinta ? COL[a0.liv] ?? GRIGIO : undefined
@@ -521,7 +523,7 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
     x += Math.max(largo(riga1), largo(riga2)) * 0.85
   } else t(riga1, lavora ? '' : 'mu', lavora && tinta ? '#3a3a36' : undefined)
   // Agents running now: name and model of the first, +N for the others.
-  if (d.attivi?.length) { const g = d.attivi[0]; sep(); t(g.nome, '', tinta ? COL[g.liv] : undefined); sp(5); t(nomeModello(g.model), 'mu'); if (d.attivi.length > 1) { sp(5); t(`+${d.attivi.length - 1}`, 'mu') } }
+  if (d.attivi?.length > 1) { sep(); t(`+${d.attivi.length - 1}`, 'mu') }
   if (!compact) {
     // Only what is useful now: the current job (since your last message); counts at zero and a missing task list are left out.
     const n: [number, string, string | undefined][] = [[d.lavorano, '▶', COL.medium], [d.fermi, '⏸', COL.high], [d.completi, '✓', undefined], [d.interrotti, '✗', undefined]]
