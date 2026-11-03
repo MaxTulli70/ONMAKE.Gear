@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.98'
+const VERSIONE = '0.6.99'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -866,6 +866,8 @@ export const register: Register = (on, options) => {
           </Box>
         </Box>
         <Box flexShrink={0} flexDirection="row" gap={0} alignItems="center">
+          {tasto('tendina', open ? '↓' : '↑', () => apriChiudi($))}
+          {tasto('pannello', '↗', () => apriPannello($).catch(() => $.ui.toast(tr('Gear: pannello non aperto'))))}
           {/* A button takes only text and the app does not follow a link inside an SVG, so a transparent button lies over the logo and opens the site. */}
           <Box position="relative">
             <Svg source={LOGO} alt="ONMAKE" width={32} height={34} />
@@ -875,8 +877,6 @@ export const register: Register = (on, options) => {
               </Button>
             </Box>
           </Box>
-          {tasto('tendina', open ? '↓' : '↑', () => apriChiudi($))}
-          {tasto('pannello', '↗', () => apriPannello($).catch(() => $.ui.toast(tr('Gear: pannello non aperto'))))}
         </Box>
       </Box>
     )
