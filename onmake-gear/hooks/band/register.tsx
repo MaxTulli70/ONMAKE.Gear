@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.118'
+const VERSIONE = '0.6.119'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -743,7 +743,6 @@ async function apriChiudi($: EngineInterface) {
 
 let last = 0
 let fase = '' // what the model streams now: pensa or scrive (main chat)
-let ultimoGrp: { source: string; width: number } = { source: '', width: 0 }
 let carLetto = 0 // value of car when the transcript was last read
 let car = 0 // real tokens of this turn, from the usage the model sends at the end of every step
 let inizioTurno = '' // start of the current turn, for the live view
@@ -871,10 +870,7 @@ export const register: Register = (on, options) => {
       return <Button key={k} plain onPress={fn}><Text color={col} dimColor={!col}>{s}</Text></Button>
     }
     const pa = await read($, passo)
-    const grpNuovo = svgRiga(d, tinta, compact, pa, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, null, 0, car, true)
-    // While a job just started the turn's numbers are still zero and the group would vanish: keep showing the last one that had content.
-    if (grpNuovo.width > 4) ultimoGrp = grpNuovo
-    const grp1 = grpNuovo.width > 4 ? grpNuovo : ultimoGrp
+    const grp1 = svgRiga(d, tinta, compact, pa, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, null, 0, car, true)
     const riga1 = svgRiga(d, tinta, compact, pa, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, await read($, attivo).catch(() => null), await $.clock.now().catch(() => 0), car)
     const testaDesk = (
       <Box flexDirection="row" alignItems="center" gap={1} width={e.props.bodyColumns}>
