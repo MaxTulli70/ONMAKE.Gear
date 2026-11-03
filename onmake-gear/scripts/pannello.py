@@ -56,6 +56,7 @@ def costo(model, v, P):
     f = famiglia(model)
     return None if f not in P else sum(a * b for a, b in zip(v, P[f])) / 1e6
 
+TUTTO = False  # --tutto: vista "totale chat", la barra conta tutti gli agenti della sessione
 DA = None  # --da: ora del reset parziale (None = tutta la chat)
 
 def leggi(path):
@@ -128,7 +129,12 @@ def leggi(path):
 def sessione(cartella, sid):
     d = os.path.expanduser("~/.claude/projects/" + re.sub(r"[^A-Za-z0-9]", "-", cartella))
     if sid:
-        return d + "/" + sid.replace(".jsonl", "") + ".jsonl"
+        f = d + "/" + sid.replace(".jsonl", "") + ".jsonl"
+        if not os.path.exists(f):  # the chat's folder changed during the session: the transcript stays in the folder it started in
+            alt = glob.glob(os.path.expanduser("~/.claude/projects/*/")+ os.path.basename(f))
+            if alt:
+                return alt[0]
+        return f
     f = glob.glob(d + "/*.jsonl")
     if not f:
         sys.exit("Nessuna trascrizione in " + d)
@@ -197,10 +203,23 @@ def riepilogo(sess):
                 perc=perc, el=el, eta=eta, livello=(gear[-1]["liv"] if gear else None), dir=(gear[-1]["dir"] if gear else ""),
                 attivi=attivi, fermi=fermi, ora=ora)
 
+def ultracode(sess):
+    """True se l'app ha acceso Ultracode per questa sessione (campo sessionSettings.ultracode del file di sessione dell'app)."""
+    sid = os.path.basename(sess).replace(".jsonl", "")
+    for f in glob.glob(os.path.expanduser("~/Library/Application Support/Claude/claude-code-sessions/*/*/local_*.json")):
+        try:
+            d = json.load(open(f))
+        except Exception:
+            continue
+        if d.get("cliSessionId") == sid:
+            return (d.get("sessionSettings") or {}).get("ultracode") is True
+    return False
+
+
 def breve(r):
     """Per la barra: solo il lavoro attuale, cioe' dal tuo ultimo messaggio (la sessione intera resta nel pannello)."""
     m, u = r["main"], r["main"]["ultimo"]
-    ag = [x for x in r["ag"] if u is None or (x["b"] and x["b"] >= u)]
+    ag = r["ag"] if TUTTO else [x for x in r["ag"] if u is None or (x["b"] and x["b"] >= u)]
     todos = m["todos"] if m["todos"] and m["todo_t"] and u and m["todo_t"] >= u else None
     tot = len(todos) if todos else 0
     fatti = sum(1 for t in (todos or []) if t.get("status") == "completed")
@@ -216,9 +235,9 @@ def breve(r):
     tokmod = sorted(([k, v] for k, v in tm.items() if v > 0), key=lambda kv: -kv[1])
     passo = next((t.get("activeForm") or t.get("content") for t in (todos or []) if t.get("status") == "in_progress"), None)
     # solo un passo vero dell'elenco: l'ultimo messaggio "utente" puo' essere di un'altra sessione o un avviso
-    perliv = {k: [0, 0] for k in LIV[:4]}
+    perliv = {k: [0, 0] for k in LIV}
     for x in r["ag"]:
-        k = "opus" if x["liv"] == "max" else x["liv"]
+        k = x["liv"]
         if k in perliv:
             perliv[k][0] += 1
             perliv[k][1] += sum(x["v"][:3])
@@ -406,17 +425,25 @@ table{{border-collapse:collapse;width:100%;font-size:12px}} td,th{{padding:5px 6
 <p class="mu sm">{T("foot", o=f"{r['opus']:.2f}", c=kt(r['cr']))}{nota}</p></section>
 </body></html>"""
 
+def _errore(t, v, tb):
+    import traceback
+    open(os.path.expanduser("~/.claude/gear-errore.txt"), "w").write(" ".join(sys.argv) + "\n" + "".join(traceback.format_exception(t, v, tb)))
+    sys.__excepthook__(t, v, tb)
+
 if __name__ == "__main__":
+    sys.excepthook = _errore
     p = argparse.ArgumentParser()
     p.add_argument("--cartella", default=os.getcwd())
     p.add_argument("--sessione")
     p.add_argument("--json", action="store_true")
     p.add_argument("--da")
     p.add_argument("--html")
+    p.add_argument("--tutto", action="store_true")
     p.add_argument("--lingua", default="it", choices=LANGS)
     a = p.parse_args()
     sess = sessione(a.cartella, a.sessione)
     DA = tempo(a.da) if a.da else None
+    TUTTO = a.tutto
     LINGUA = a.lingua
     r = riepilogo(sess)
     if a.html:
@@ -424,4 +451,5 @@ if __name__ == "__main__":
         open(a.html, "w").write(pagina(r, sess))
         print("Scritto", a.html)
     else:
-        print(json.dumps(breve(r), ensure_ascii=False))
+        print(json.dumps(dict(breve(r), ultra=ultracode(sess)), ensure_ascii=False))
+    open(os.path.expanduser("~/.claude/gear-ultimo.txt"), "w").write(" ".join(sys.argv) + "\n" + sess + "\n")

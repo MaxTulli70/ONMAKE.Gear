@@ -14,6 +14,7 @@ export type Dati = {
   fermi: number
   completi: number
   interrotti: number
+  ultra?: boolean
   attivi: { liv: string; tipo: string; nome: string; desc: string; model: string }[]
   tok: number
   cr: number

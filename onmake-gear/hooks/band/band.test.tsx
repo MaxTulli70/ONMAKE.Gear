@@ -74,3 +74,13 @@ test('desktop: the language chosen in the guide changes the whole bar', async ($
   expect((svg?.props as { source?: string })?.source).not.toContain('pensa…')
   await ui.unmount()
 })
+
+const VERO = {"perliv": {"light": [0, 0], "medium": [0, 0], "high": [0, 0], "opus": [0, 0]}, "tokmod": [["opus-5-5", 1617]], "compito": "", "chat": "opus-5-5", "livello": null, "dir": "", "agenti": 0, "fini": 0, "lavorano": 0, "fermi": 0, "completi": 0, "interrotti": 0, "attivi": [], "tok": 1617, "stok": 426855, "sel": 711, "sag": 0, "cr": 8996378, "reale": 6.28, "opus": 7.68, "risp": 0.18235613632762637, "perc": null, "fatti": 0, "tot": 0, "el": 8, "eta": null, "righe": []}
+for (const [nome, lav] of [['vero', false], ['lavora', true]] as const) test('dump ' + nome, async ($, on) => {
+  on('ui.render', ($: any, e: any) => { const { Text } = $.ui.resolve(e); return <Text>engine</Text> })
+  on('state.get', (_: unknown, e: { plugin: string; key: string }) => ({ value: { value: e.key === 'dati' ? VERO : e.key === 'attivo' && lav ? { tool: 'Bash', cosa: 'cd x && ls', t0: 1 } : e.key === 'aperta' ? false : undefined, version: 1 } }))
+  const u = await $.ui.mount({ ...BAND, surface: 'desktop', props: { ...BAND.props, isWorking: lav } })
+  const all = JSON.stringify(await u.find({ type: 'Box' }))
+  for (const m of all.matchAll(/"source":"(<svg.*?<\/svg>)"/g)) console.log('SVG' + nome + ':' + JSON.parse('"' + m[1] + '"'))
+  await u.unmount()
+})

@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.121'
+const VERSIONE = '0.6.184'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -41,7 +41,8 @@ async function ricarica($: EngineInterface) {
   // Workflow view: only what came after the partial reset (or after the start, if never reset).
   const vv = await read($, vista).catch(() => 'tot')
   const da = vv === 'wf' ? await read($, reset).catch(() => '') : vv === 'live' ? inizioTurno : ''
-  const r = await $.process.run(['python3', script, '--cartella', await $.session.cwd(), '--sessione', await $.session.id(), '--json', ...(da ? ['--da', da] : [])])
+  CARTELLA = await $.session.cwd()
+  const r = await $.process.run(['python3', script, '--cartella', CARTELLA, '--sessione', await $.session.id(), '--json', ...(da ? ['--da', da] : []), ...(vv === 'tot' ? ['--tutto'] : [])])
   if (r.exitCode !== 0) return undefined
   const d = JSON.parse(r.stdout) as Dati
   if (mio !== giro) return d
@@ -54,7 +55,9 @@ async function ricarica($: EngineInterface) {
 const bar = (f: number) => '▰'.repeat(Math.round(f * 5)) + '▱'.repeat(5 - Math.round(f * 5))
 const pct = (d: Dati) => (d.perc === null ? '' : `${Math.round(d.perc * 100)}% ${d.fatti}/${d.tot}`)
 const ag = (d: Dati) => `▶${d.lavorano} ⏸${d.fermi} ✓${d.completi}${d.interrotti > 0 ? ` ✗${d.interrotti}` : ''}`
-const lev = (d: Dati) => `⚙ ${d.livello ? d.livello.toUpperCase() : '-'}${d.dir === '▲' || d.dir === '▼' ? ' ' + d.dir : ''}`
+// Name shown for a gear: LIGHT is called HAIKU and MEDIUM is called SONNET.
+const nomeMarcia = (k: string) => (k === 'medium' ? 'SONNET' : k === 'light' ? 'HAIKU' : k.toUpperCase())
+const lev = (d: Dati) => `⚙ ${d.livello ? nomeMarcia(d.livello) : '-'}${d.dir === '▲' || d.dir === '▼' ? ' ' + d.dir : ''}`
 
 // Plain text for the status line (position below); the bar above draws the same parts in color.
 function riga(d: Dati, compact: boolean) {
@@ -72,12 +75,12 @@ const STILE = '<style>text{font:400 12px -apple-system,system-ui,sans-serif;fill
 
 // Optimization index 0-100: how low the work ran. Weight per token: Haiku 1, Sonnet 2 (high 3), Opus 5; 0 = all Opus, 100 = all Haiku.
 function indiceOtt(d: Dati) {
-  const W: Record<string, number> = { light: 1, medium: 2, high: 3, opus: 5 }
+  const W: Record<string, number> = { light: 1, medium: 2, high: 3, opus: 5, max: 5 }
   const pesoChat = /haiku/.test(d.chat) ? 1 : /sonnet/.test(d.chat) ? 2 : 5
   const tot = d.stok || d.tok
   if (!tot) return null
-  const ag = ['light', 'medium', 'high', 'opus'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0), 0)
-  const pesato = ['light', 'medium', 'high', 'opus'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0) * W[k], 0) + Math.max(0, tot - ag) * pesoChat
+  const ag = ['light', 'medium', 'high', 'opus', 'max'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0), 0)
+  const pesato = ['light', 'medium', 'high', 'opus', 'max'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0) * W[k], 0) + Math.max(0, tot - ag) * pesoChat
   return Math.max(0, Math.min(100, Math.round((1 - pesato / (tot * 5)) / 0.8 * 100)))
 }
 
@@ -85,8 +88,22 @@ const ANIM = '<style>@keyframes gs{0%{transform:translateX(-14px)}100%{transform
 
 const TR: Record<string, Record<string, string>> = {
   en: {
+    'lavora': 'working',
     'nessuna marcia': 'no gear',
     'pronto': 'ready',
+    'medio': 'medium',
+    'extra': 'extra',
+    'lavoro': 'work',
+    'resta': 'left',
+    'velocità': 'speed',
+    'tk ag.': 'ag. tk',
+    'risp.': 'sav.',
+    'in attesa': 'idle',
+    'Marce': 'Gears',
+    'basso': 'low',
+    'alto': 'high',
+    'max': 'max',
+    'effort': 'effort',
     'pensa…': 'thinking…',
     'chat': 'chat',
     'indice': 'index',
@@ -164,8 +181,22 @@ const TR: Record<string, Record<string, string>> = {
     'Gear: workflow azzerato da adesso': 'Gear: workflow reset from now',
   },
   de: {
+    'lavora': 'arbeitet',
     'nessuna marcia': 'kein Gang',
     'pronto': 'bereit',
+    'medio': 'mittel',
+    'extra': 'extra',
+    'lavoro': 'Arbeit',
+    'resta': 'Rest',
+    'velocità': 'Tempo',
+    'tk ag.': 'Ag.-Tk',
+    'risp.': 'Ersp.',
+    'in attesa': 'Ruhe',
+    'Marce': 'Gänge',
+    'basso': 'niedrig',
+    'alto': 'hoch',
+    'max': 'max',
+    'effort': 'Aufwand',
     'pensa…': 'denkt…',
     'chat': 'Chat',
     'indice': 'Index',
@@ -211,7 +242,7 @@ const TR: Record<string, Record<string, string>> = {
     'lavoro attivo da': 'arbeitet seit',
     'token': 'Tokens',
     'agenti': 'Agenten',
-    'passi': 'Schritte',
+    'passi': 'Schr.',
     'di': 'von',
     'Nessun agente: lavora solo la chat.': 'Keine Agenten: nur der Chat arbeitet.',
     'attiva': 'aktiv',
@@ -243,8 +274,22 @@ const TR: Record<string, Record<string, string>> = {
     'Gear: workflow azzerato da adesso': 'Gear: Workflow ab jetzt zurückgesetzt',
   },
   fr: {
+    'lavora': 'travaille',
     'nessuna marcia': 'pas de vitesse',
     'pronto': 'prêt',
+    'medio': 'moyen',
+    'extra': 'extra',
+    'lavoro': 'travail',
+    'resta': 'reste',
+    'velocità': 'vitesse',
+    'tk ag.': 'tk ag.',
+    'risp.': 'écon.',
+    'in attesa': 'repos',
+    'Marce': 'Vitesses',
+    'basso': 'bas',
+    'alto': 'haut',
+    'max': 'max',
+    'effort': 'effort',
     'pensa…': 'réfléchit…',
     'chat': 'chat',
     'indice': 'indice',
@@ -322,8 +367,22 @@ const TR: Record<string, Record<string, string>> = {
     'Gear: workflow azzerato da adesso': 'Gear: workflow réinitialisé dès maintenant',
   },
   es: {
+    'lavora': 'trabaja',
     'nessuna marcia': 'sin marcha',
     'pronto': 'listo',
+    'medio': 'medio',
+    'extra': 'extra',
+    'lavoro': 'trabajo',
+    'resta': 'resta',
+    'velocità': 'velocidad',
+    'tk ag.': 'tk ag.',
+    'risp.': 'ahor.',
+    'in attesa': 'reposo',
+    'Marce': 'Marchas',
+    'basso': 'bajo',
+    'alto': 'alto',
+    'max': 'max',
+    'effort': 'esfuerzo',
     'pensa…': 'piensa…',
     'chat': 'chat',
     'indice': 'índice',
@@ -422,12 +481,14 @@ function spiega(ora: Attivo) {
 }
 
 // Short guide shown by the '? guida' button.
+// Language buttons are flags: real text, so the focus box is exactly the button.
+const BANDIERA: Record<string, string> = { it: '🇮🇹', en: '🇺🇸', de: '🇩🇪', fr: '🇫🇷', es: '🇪🇸' }
 const GUIDA: Record<string, string[]> = {
-  it: ['marce: LIGHT Haiku, MEDIUM e HIGH Sonnet, OPUS Opus, MAX picco', '↑ salita, ↓ scesa: marcia rispetto all\'agente prima', 'barretta: impegno low, medium, high, max', 'live: turno in corso · workflow: dal reset · totale: chat', 'contachilometri: marcia e impegno (L M H O X, 4 passi ciascuna)', 'indice 0 tutto Opus, 100 tutto Haiku (verde ≥50)', 'risparmio: token fatti da modelli sotto Opus'],
-  en: ['gears: LIGHT Haiku, MEDIUM and HIGH Sonnet, OPUS Opus, MAX peak', '↑ up, ↓ down: gear compared with the previous agent', 'small bar: effort low, medium, high, max', 'live: current turn · workflow: since reset · total: chat', 'speedometer: gear and effort (L M H O X, 4 steps each)', 'index 0 all Opus, 100 all Haiku (green ≥50)', 'saving: tokens done by models below Opus'],
-  de: ['Gänge: LIGHT Haiku, MEDIUM und HIGH Sonnet, OPUS Opus, MAX Spitze', '↑ hoch, ↓ runter: Gang im Vergleich zum vorigen Agenten', 'Balken: Aufwand low, medium, high, max', 'live: aktueller Durchgang · Workflow: seit Reset · gesamt: Chat', 'Tacho: Gang und Aufwand (L M H O X, je 4 Stufen)', 'Index 0 alles Opus, 100 alles Haiku (grün ≥50)', 'Ersparnis: Token von Modellen unter Opus'],
-  fr: ['vitesses : LIGHT Haiku, MEDIUM et HIGH Sonnet, OPUS Opus, MAX pic', '↑ montée, ↓ descente : vitesse par rapport à l\'agent précédent', 'barrette : effort low, medium, high, max', 'live : tour en cours · workflow : depuis le reset · total : chat', 'compteur : vitesse et effort (L M H O X, 4 crans chacune)', 'indice 0 tout Opus, 100 tout Haiku (vert ≥50)', 'économie : tokens faits par des modèles sous Opus'],
-  es: ['marchas: LIGHT Haiku, MEDIUM y HIGH Sonnet, OPUS Opus, MAX pico', '↑ sube, ↓ baja: marcha respecto al agente anterior', 'barrita: esfuerzo low, medium, high, max', 'live: turno en curso · workflow: desde el reset · total: chat', 'velocímetro: marcha y esfuerzo (L M H O X, 4 pasos cada una)', 'índice 0 todo Opus, 100 todo Haiku (verde ≥50)', 'ahorro: tokens hechos por modelos bajo Opus'],
+  it: ['scala a sinistra: marcia HAIKU, SONNET, HIGH, OPUS, MAX', '▶ lavora · ⏸ agente fermo · ■ a riposo', 'lavoro: cosa fa adesso e da quanto tempo', 'passi, resta: passi fatti della lista e tempo che manca', 'agenti: ▶ lavorano · ⏸ fermi · ✓ finiti · ✗ interrotti', 'tk ag.: token degli agenti · velocità: token al minuto', 'ultracode: compare solo se è acceso', 'Sonnet: modello e token della chat', 'risp.: token di agenti Haiku e Sonnet sul totale', 'Opt.: 0 tutto Opus, 100 tutto Haiku (verde ≥50)', 'live: turno in corso · workflow: dal reset · totale: chat', 'contachilometri: marcia (1-5) e impegno, 5 passi ciascuna', 'marce: HAIKU, SONNET e HIGH Sonnet, OPUS Opus, MAX picco', '↑ salita, ↓ scesa: marcia rispetto all\'agente prima'],
+  en: ['left scale: gear HAIKU, SONNET, HIGH, OPUS, MAX', '▶ working · ⏸ agent stopped · ■ idle', 'work: what it does now and for how long', 'steps, left: steps done of the list and time to go', 'agents: ▶ working · ⏸ stopped · ✓ done · ✗ interrupted', 'tk ag.: agent tokens · speed: tokens per minute', 'ultracode: shown only when it is on', 'Sonnet: the chat model and its tokens', 'sav.: tokens by Haiku and Sonnet agents over the total', 'Opt.: 0 all Opus, 100 all Haiku (green ≥50)', 'live: current turn · workflow: since reset · total: chat', 'speedometer: gear (1-5) and effort, 5 steps each', 'gears: HAIKU, SONNET and HIGH Sonnet, OPUS Opus, MAX peak', '↑ up, ↓ down: gear compared with the previous agent'],
+  de: ['Skala links: Gang HAIKU, SONNET, HIGH, OPUS, MAX', '▶ arbeitet · ⏸ Agent gestoppt · ■ Ruhe', 'Arbeit: was jetzt läuft und seit wann', 'Schritte, Rest: erledigte Schritte und verbleibende Zeit', 'Agenten: ▶ arbeiten · ⏸ gestoppt · ✓ fertig · ✗ abgebrochen', 'tk ag.: Token der Agenten · Tempo: Token pro Minute', 'ultracode: nur sichtbar, wenn aktiv', 'Sonnet: Modell des Chats und seine Token', 'Ersp.: Token von Haiku- und Sonnet-Agenten am Gesamten', 'Opt.: 0 alles Opus, 100 alles Haiku (grün ≥50)', 'live: aktueller Durchgang · Workflow: seit Reset · gesamt: Chat', 'Tacho: Gang (1-5) und Aufwand, je 5 Stufen', 'Gänge: HAIKU, SONNET und HIGH Sonnet, OPUS Opus, MAX Spitze', '↑ hoch, ↓ runter: Gang im Vergleich zum vorigen Agenten'],
+  fr: ['échelle à gauche : vitesse HAIKU, SONNET, HIGH, OPUS, MAX', '▶ travaille · ⏸ agent arrêté · ■ repos', 'travail : ce qu\'il fait et depuis quand', 'étapes, reste : étapes faites de la liste et temps restant', 'agents : ▶ au travail · ⏸ arrêtés · ✓ finis · ✗ interrompus', 'tk ag. : tokens des agents · vitesse : tokens par minute', 'ultracode : visible seulement s\'il est actif', 'Sonnet : modèle du chat et ses tokens', 'écon. : tokens des agents Haiku et Sonnet sur le total', 'Opt. : 0 tout Opus, 100 tout Haiku (vert ≥50)', 'live : tour en cours · workflow : depuis le reset · total : chat', 'compteur : vitesse (1-5) et effort, 5 crans chacune', 'vitesses : HAIKU, SONNET et HIGH Sonnet, OPUS Opus, MAX pic', '↑ montée, ↓ descente : vitesse par rapport à l\'agent précédent'],
+  es: ['escala a la izquierda: marcha HAIKU, SONNET, HIGH, OPUS, MAX', '▶ trabaja · ⏸ agente parado · ■ reposo', 'trabajo: qué hace ahora y desde cuándo', 'pasos, resta: pasos hechos de la lista y tiempo que falta', 'agentes: ▶ trabajan · ⏸ parados · ✓ acabados · ✗ interrumpidos', 'tk ag.: tokens de los agentes · velocidad: tokens por minuto', 'ultracode: solo se ve si está activo', 'Sonnet: modelo del chat y sus tokens', 'ahor.: tokens de agentes Haiku y Sonnet sobre el total', 'Opt.: 0 todo Opus, 100 todo Haiku (verde ≥50)', 'live: turno en curso · workflow: desde el reset · total: chat', 'velocímetro: marcha (1-5) y esfuerzo, 5 pasos cada una', 'marchas: HAIKU, SONNET y HIGH Sonnet, OPUS Opus, MAX pico', '↑ sube, ↓ baja: marcha respecto al agente anterior'],
 }
 
 // Ignition: true in the first second of a turn; the drawings then play their start-up animations once.
@@ -454,10 +515,12 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
     x += largo(s)
   }
   const sp = (n = 8) => { x += n }
+  // From a million up the count is shortened (165,2M) so the right block keeps its width.
+  const ktc = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1).replace('.', ',')}M` : kt(n))
   // Model and its tokens as two small lines, name above and count under it, centred in one column.
   const colonna = (nome: string, col: string | undefined, num: string) => {
-    const w = Math.ceil(Math.max(largo(nome) * 0.85, largo(num) * 0.8))
-    out.push(`<text x="${x + w / 2}" y="12" text-anchor="middle" class="sm"${col ? ` style="fill:${col}"` : ''}>${esc(nome)}</text><text x="${x + w / 2}" y="24" text-anchor="middle" class="mu" style="font-size:9px">${esc(num)}</text>`)
+    const w = 54 // fixed slot: the block never changes width with the numbers
+    out.push(`<text x="${x + w / 2}" y="9" text-anchor="middle" class="sm"${col ? ` style="fill:${col}"` : ''}>${esc(nome)}</text><text x="${x + w / 2}" y="21" text-anchor="middle" class="mu" style="font-size:10px">${esc(num)}</text>`)
     x += w
   }
   const sep = () => { sp(14) }
@@ -466,31 +529,64 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
     for (let i = 0; i < 5; i++) out.push(`<rect x="${x + i * 10}" y="6.5" width="8" height="11" rx="1.8"${i < n ? ` style="fill:${tinta ? col : '#8a8a84'}"` : ' class="v"'}/>`)
     x += 50 + 4
   }
+  // Metrics cells, then model, saving and Opt. bars: one block next to the arrows.
+  const corto = (s: string, n: number) => s.slice(0, n) // cut at the slot edge, never with dots
+  const tokAg = d.righe.reduce((a, r) => a + (r.tok || 0), 0)
+  // Fixed cells (shared by the left block and the right block): every datum has its own slot (small label above, value below, colour or bar), so nothing moves while it is read.
+  const secV = adesso && inizioTurno ? Math.round((adesso - Date.parse(inizioTurno)) / 1000) : 0
+  const vel = lavora && vivoTok > 0 && secV > 5 ? `${kt(Math.round(vivoTok / (secV / 60)))}/min` : '–'
+  const cella = (w: number, et: string, val: string, col?: string, fr?: number, raw?: string, fs = 10) => {
+    const mx = Math.max(3, Math.floor((w - 4) / (fs * 0.55))), cc = tinta && col ? col : ''
+    out.push(`<text x="${x}" y="9" class="sm mu">${esc(et)}</text><text x="${x}" y="21" class="sm" style="font-size:${fs}px${cc ? `;fill:${cc}` : ''}">${raw ?? esc(corto(val, mx))}</text>`)
+    if (fr !== undefined) out.push(`<rect x="${x}" y="23" width="${w - 8}" height="3" rx="1.5" class="v"/><rect x="${x}" y="23" width="${Math.max(1, Math.round((w - 8) * Math.min(1, Math.max(0, fr))))}" height="3" rx="1.5" style="fill:${cc || '#8a8a84'}"/>`)
+    x += w
+  }
+  const ag = ([[d.lavorano, '▶', COL.medium], [d.fermi, '⏸', COL.high], [d.completi, '✓', '#8a8a84'], [d.interrotti, '✗', '#c0714f']] as [number, string, string][]).map(([k, g, c]) => `<tspan${tinta ? ` style="fill:${c}"` : ''}>${g}${k}</tspan>`).join(' ')
+
   // Model + tokens and the score bar, drawn as their own small image next to the arrows.
   if (gruppo) {
+  if (!compact) {
+  if (d.ultra) cella(46, 'ultracode', 'ON', COL.max) // leftmost: when it appears the other cells stay where they are
+  cella(38, tr('passi'), d.perc !== null ? `${d.fatti}/${d.tot}` : '–', COL.medium, d.perc ?? 0)
+  cella(42, tr('resta'), d.eta !== null ? `~${dur(d.eta)}` : '–', COL.high, d.eta !== null ? d.el / (d.el + d.eta) : 0)
+  cella(76, tr('agenti'), '', undefined, undefined, ag)
+  cella(38, tr('tk ag.'), tokAg > 0 ? ktc(tokAg) : '–')
+  cella(70, tr('velocità'), vel)
+  sp(4)
+  }
   // The model the chat is using now, e.g. 'opus-5-5' -> 'Opus 5.5'.
   // Model and effort the chat is using now, then the tokens of the current job per model.
   const mod = p?.model || d.chat
-  // Tokens of the current job per model; nothing while the job has used none yet.
-  if (lavora && vivoTok > 0) { colonna(nomeModello(mod || d.chat).split(' ')[0], tinta ? colMod(mod || d.chat) : undefined, `${kt(conta('vivo', vivoTok))}tk`) }
-  else if (d.tokmod && d.tokmod.length > 0) { d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(6); colonna(nomeModello(m).split(' ')[0], tinta ? colMod(m) : undefined, `${kt(n)}tk`) }) }
-  else if (d.tok > 0) { t(`${kt(d.tok)} tk`, 'mu') }
+  // One fixed slot: the model in use and its tokens (the live job while it works, else the model's tokens in this view).
+  { const nomeM = nomeModello(mod || d.chat).split(' ')[0], tkM = lavora && vivoTok > 0 ? conta('vivo', vivoTok) : ((d.tokmod ?? []).find(([m]) => m === mod)?.[1] ?? d.stok ?? d.tok ?? 0)
+    colonna(nomeM, tinta ? colMod(mod || d.chat) : undefined, `${ktc(tkM)}tk`) }
+  // Saving bar, same drawing as the Opt. bar, after the model, before the Opt. bar.
+  sp(x > 0 ? 2 : 0)
+  { const bassi = ['light', 'medium', 'high'].reduce((a, k) => a + (d.perliv?.[k]?.[1] ?? 0), 0), pr = d.stok ? Math.round(bassi / d.stok * 100) : 0
+    const ci = tinta ? (pr >= 50 ? COL.medium : pr >= 20 ? COL.high : '#c0714f') : '#8a8a84'
+    out.push(`<rect x="${x + 6}" y="3" width="32" height="7" rx="3" class="v"/><rect x="${x + 6}" y="3" width="${Math.max(2, pr * 0.32)}" height="7" rx="3" style="fill:${ci}"/><text x="${x + 22}" y="21" text-anchor="middle" style="font-size:10px${tinta ? `;fill:${ci}` : ''}">${tr('risp.')} ${d.stok ? pr + '%' : '–'}</text>`)
+    x += 50 }
   // Whole session: all tokens so far and how many agents it has used.
   const io = indiceOtt(d)
-  if (io !== null) { sp(x > 0 ? 6 : 0)
-    const ci = tinta ? (io >= 50 ? COL.medium : io >= 20 ? COL.high : '#c0714f') : '#8a8a84'
+  { sp(6) // always drawn, empty track when there is no index yet: the slot never disappears
+    const v = io ?? 0, ci = tinta && io !== null ? (v >= 50 ? COL.medium : v >= 20 ? COL.high : '#c0714f') : '#8a8a84'
     // Small bar filled to the index, so the number reads as a score out of 100 without the word.
-    out.push(`<rect x="${x}" y="6" width="32" height="7" rx="3" class="v"/><rect x="${x}" y="6" width="${Math.max(2, io * 0.32)}" height="7" rx="3" style="fill:${ci}"/><text x="${x + 16}" y="23" text-anchor="middle" style="font-size:9px${tinta ? `;fill:${ci}` : ''}">${io}%</text>`)
-    x += 38 }
+    out.push(`<rect x="${x}" y="3" width="32" height="7" rx="3" class="v"/><rect x="${x}" y="3" width="${io === null ? 0 : Math.max(2, v * 0.32)}" height="7" rx="3" style="fill:${ci}"/><text x="${x + 16}" y="21" text-anchor="middle" style="font-size:10px${tinta ? `;fill:${ci}` : ''}">Opt. ${io === null ? '–' : v + '%'}</text>`)
+    x += 44 }
     const w = Math.ceil(x + 2)
     return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${H}" viewBox="0 0 ${w} ${H}">${STILE}${out.join('')}</svg>`, width: w }
   }
   // Gear ladder: five steps rising from LIGHT to MAX, filled up to the current gear, each in its own color; then the name and the step.
   const MARCE = ['light', 'medium', 'high', 'opus', 'max']
-  const k = d.livello ? MARCE.indexOf(d.livello) : -1
+  // The gear now: the agent working at this moment, else the model the chat is using; the last agent's gear only as a fallback.
+  const liv = (d.attivi[0] ? livChat(d.attivi[0].model || '') : null) || livChat(d.chat || '') || livChat(p?.model || '') || d.livello
+  // The five steps follow the effort the chat is using (Basso, Medio, Alto, Extra, Max), as in the app's menu; without an effort they follow the gear.
+  const EFF = ['low', 'medium', 'high', 'xhigh', 'max'], NOMI_EFF = ['BASSO', 'MEDIO', 'ALTO', 'EXTRA', 'MAX']
+  const ke = -1 // the ladder shows the gear (model + effort), same as the speedometer and the table
+  const k = ke >= 0 ? ke : liv ? MARCE.indexOf(liv) : -1
   // The name sits under the ladder, both centred in one block as wide as the wider of the two.
-  const nome = d.livello ? d.livello.toUpperCase() : ''
-  const Wb = Math.max(22, Math.ceil(largo(nome) * 0.7))
+  const nome = ke >= 0 ? NOMI_EFF[ke] : liv ? nomeMarcia(liv) : ''
+  const Wb = 40 // fixed: the symbol and the work cell never move when the gear name changes
   const ox = (Wb - 22) / 2
   MARCE.forEach((m, i) => {
     const h = 2.5 + i * 1.8
@@ -501,43 +597,27 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
   })
   x = Wb + 3
   if (k >= 0) {
-    out.push(`<text x="${Wb / 2}" y="24" text-anchor="middle" style="font-size:8px;letter-spacing:.1px${tinta ? `;fill:${COL[d.livello!]}` : ''}">${esc(nome)}</text>`)
+    out.push(`<text x="${Wb / 2}" y="21" text-anchor="middle" style="font-size:8px;letter-spacing:.1px${tinta ? `;fill:${COL[MARCE[k]]}` : ''}">${esc(nome)}</text>`)
     if (d.dir === '▲' || d.dir === '▼') { t(d.dir === '▲' ? '↑' : '↓', 'sm', tinta ? (d.dir === '▲' ? COL.high : COL.medium) : undefined); sp(2) }
   } else t(tr('nessuna marcia'), 'mu')
-  // Two lines, each 'text | other data': work in progress | time, then place (file, target, task) | who does it.
+  // As in Max's mock-up: the state word next to the ladder, then two lines, each 'text | other data':
+  // 1) the work (agent and its task, or the chat's) | time, steps, time left
+  // 2) where it works (file, command, else the folder) | who does it, agents, their tokens
   const a0 = d.attivi[0]
-  const chi = a0 ? `${a0.nome} ${nomeModello(a0.model)}` : tr('chat')
-  let riga1 = tr('pronto')
-  let riga2 = compact ? '' : a0 ? `${a0.desc.slice(0, 40)} | ${chi}` : d.compito ? `${d.compito.slice(0, 40)} | ${chi}` : ''
+  let stato = tr('pronto'), cosa = '', tempo = '', dove = ''
   if (lavora && ora) {
     const sp2 = spiega(ora), sec = adesso && ora.t0 ? Math.max(0, Math.round((adesso - ora.t0) / 1000)) : 0
-    riga1 = `${sp2.cosa}${sec ? ' | ' + dur(sec) : ''}`
-    if (!compact && sp2.dove) riga2 = `${sp2.dove.slice(0, 34)} | ${chi}`
+    stato = tr('lavora'); cosa = sp2.cosa; tempo = sec ? dur(sec) : ''; dove = sp2.dove || ora.cosa.trim()
   } else if (lavora) {
     const s0 = adesso && inizioTurno ? Math.max(0, Math.round((adesso - Date.parse(inizioTurno)) / 1000)) : 0
-    riga1 = `${tr('pensa…')}${s0 ? ' | ' + dur(s0) : ''}`
+    stato = tr('pensa…'); tempo = s0 ? dur(s0) : ''
   }
-  if (riga2) {
-    const col2 = a0 && tinta ? COL[a0.liv] ?? GRIGIO : undefined
-    out.push(`<text x="${x}" y="12" class="${lavora ? 'sm' : 'sm mu'}"${lavora && tinta ? ' style="fill:#3a3a36"' : ''}>${esc(riga1)}</text><text x="${x}" y="24" class="sm"${col2 ? ` style="fill:${col2}"` : ''}>${esc(riga2)}</text>`)
-    x += Math.max(largo(riga1), largo(riga2)) * 0.85
-  } else t(riga1, lavora ? '' : 'mu', lavora && tinta ? '#3a3a36' : undefined)
-  // Agents running now: name and model of the first, +N for the others.
-  if (d.attivi?.length > 1) { sep(); t(`+${d.attivi.length - 1}`, 'mu') }
-  if (!compact) {
-    // Only what is useful now: the current job (since your last message); counts at zero and a missing task list are left out.
-    const n: [number, string, string | undefined][] = [[d.lavorano, '▶', COL.medium], [d.fermi, '⏸', COL.high], [d.completi, '✓', undefined], [d.interrotti, '✗', undefined]]
-    const vivi = n.filter(([k]) => k > 0)
-    const tokAg = d.righe.reduce((a, r) => a + (r.tok || 0), 0)
-    if (vivi.length > 0 || tokAg > 0) {
-      sep(); t(tr('agenti'), 'mu'); sp(5)
-      vivi.forEach(([k, g, col], i) => { if (i) sp(6); t(`${g} ${k}`, col ? '' : 'mu', tinta ? col : undefined) })
-      if (tokAg > 0) { sp(8); t(`${kt(tokAg)} tk`) }
-    }
-    // Who is working now and on what: the working agent and its task, else the main chat and the current step or your last request.
-    if (d.perc !== null) { sep(); celle(d.perc, COL.medium); t(`${Math.round(d.perc * 100)}% (${d.fatti}/${d.tot} ${tr('passi')})`) }
-    // Time only as an estimate of what is left, when a task list allows one; a bare timer told nothing.
-    if (d.eta !== null) { sep(); t(`${tr('restano ~')}${dur(d.eta)}`, '', tinta ? COL.high : undefined) }
+  // State as a symbol: play while it works, pause when an agent is stopped, stop when idle.
+  const [sim, colS] = lavora ? ['▶', COL.medium] : d.fermi > 0 ? ['⏸', COL.high] : ['■', '#8a8a84']
+  out.push(`<text x="${x}" y="21" style="font-size:14px${tinta ? `;fill:${colS}` : ''}">${sim}</text>`); x += 18
+  const lavoro = a0 ? `${a0.nome}: ${a0.desc}` : d.compito ? `${tr('chat')}: ${d.compito}` : ''
+  if (!compact) { // always both lines, as in Max's base
+    cella(150, `${tr('lavoro')}${tempo || d.el ? ' ' + (tempo || dur(d.el)) : ''}`, lavoro || cosa || (lavora ? tr('pensa…') : tr('in attesa')), lavora ? COL.medium : undefined, undefined, undefined)
   }
   const w = Math.ceil(x + 2)
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${H}" viewBox="0 0 ${w} ${H}">${STILE}${out.join('')}</svg>`, width: w }
@@ -578,9 +658,9 @@ function svgScritta(s: string, col?: string, fisso = 0) {
 // Bar of where the session tokens went: main chat and each gear's agents, with the share of each.
 function svgBarra(pl: Record<string, [number, number]>, tot: number, tinta: boolean) {
   const W = 380
-  const liv = ['light', 'medium', 'high', 'opus']
+  const liv = ['light', 'medium', 'high', 'opus', 'max']
   const ag = liv.reduce((a, k) => a + (pl[k]?.[1] ?? 0), 0)
-  const parti: [string, number, string][] = [['chat', Math.max(0, tot - ag), '#c0714f'], ...liv.map(k => [k.toUpperCase(), pl[k]?.[1] ?? 0, COL[k]] as [string, number, string])]
+  const parti: [string, number, string][] = [['chat', Math.max(0, tot - ag), '#c0714f'], ...liv.map(k => [nomeMarcia(k), pl[k]?.[1] ?? 0, COL[k]] as [string, number, string])]
   let x = 0, lx = 0
   const out: string[] = [`<text x="0" y="10" class="mu sm">${tr('chi ha usato i token')}</text>`, `<rect x="0" y="16" width="${W}" height="10" rx="3" class="v"/>`]
   for (const [nome, n, col] of parti) {
@@ -588,14 +668,17 @@ function svgBarra(pl: Record<string, [number, number]>, tot: number, tinta: bool
     const w = Math.max(2, n / tot * W)
     out.push(`<rect x="${x.toFixed(1)}" y="16" width="${w.toFixed(1)}" height="10" style="fill:${tinta ? col : GRIGIO}"/>`)
     x += w
-    const s = `${nome} ${(n / tot * 100).toFixed(1).replace('.', ',')}%`
+    const s = `${nome} ${(n / tot * 100).toFixed(1).replace('.', ',')}% · ${n >= 1e6 ? (n / 1e6).toFixed(1).replace('.', ',') + 'M' : kt(n)}`
     out.push(`<rect x="${lx}" y="33" width="8" height="8" rx="2" style="fill:${tinta ? col : GRIGIO}"/><text x="${lx + 12}" y="41" class="sm mu">${s}</text>`)
     lx += 12 + largo(s) * 0.9 + 14
   }
-  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="46" viewBox="0 0 ${W} 46">${STILE}${out.join('')}</svg>`, width: W }
+  const Wt = Math.max(W, Math.ceil(lx)) // the legend can be wider than the bar
+  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${Wt}" height="46" viewBox="0 0 ${Wt} 46">${STILE}${out.join('')}</svg>`, width: Wt }
 }
 
 // Dashboard gauge: half dial with the 5 gears as coloured sectors, needle on the active one, arrow up/down.
+// The gear now: the agent working at this moment, else the model the chat is using; the last agent's gear only as a fallback.
+const livAdesso = (d: Dati) => (d.attivi[0] ? livChat(d.attivi[0].model || '') : null) || livChat(d.chat || '') || d.livello
 const livChat = (m: string) => (/haiku/.test(m) ? 'light' : /sonnet/.test(m) ? 'medium' : /opus/.test(m) ? 'opus' : null)
 // Car speedometer: 240° dial, scale 0..10 thousand token/min with ticks and numbers, gear zones on the rim,
 // needle on the real speed of this turn (tokens per minute), digital readout and gear + effort under the hub.
@@ -610,44 +693,45 @@ function svgCruscotto(livello: string | null, dir: string, tinta: boolean, lavor
     const [x0, y0] = pt(ang(i / 5) - 0.02, R), [x1, y1] = pt(ang((i + 1) / 5) + 0.02, R)
     out.push(`<path d="M ${x0} ${y0} A ${R} ${R} 0 0 1 ${x1} ${y1}" style="fill:none;stroke:${tinta ? COL[m] : '#8a8a84'};stroke-width:${i === k ? 6 : 3};opacity:${i === k ? 1 : 0.45}"${i === k && lavora ? ' class="gp"' : ''}>${ACC ? `<animate attributeName="stroke-opacity" values="0;0;1" keyTimes="0;${(i / 6).toFixed(2)};1" dur="${(0.25 + i * 0.18).toFixed(2)}s" fill="freeze"/>` : ''}</path>`)
   })
-  for (let j = 0; j <= 20; j++) {
-    const big = j % 4 === 0, a = ang(j / 20)
+  for (let j = 0; j <= 25; j++) {
+    const big = j % 5 === 0, a = ang(j / 25)
     const [x0, y0] = pt(a, R - 4), [x1, y1] = pt(a, R - (big ? 12 : 8))
     out.push(`<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" style="stroke:#55554f;stroke-width:${big ? 1.6 : 0.8}"/>`)
-    // letter of each gear in the middle of its sector: 4 effort steps per gear, 20 in all
-    if (j % 4 === 2) { const [tx, ty] = pt(a, R - 20); out.push(`<text x="${tx}" y="${(+ty + 3).toFixed(1)}" text-anchor="middle" class="sm"${tinta ? ` style="fill:${COL[M[(j - 2) / 4]]}"` : ''}>${'LMHOX'[(j - 2) / 4]}</text>`) }
+    // number (1-5) of each gear in the middle of its sector: 5 effort steps per gear (as in the app's menu), 25 in all
+    if (j % 5 === 2) { const [tx, ty] = pt(a, R - 20); out.push(`<text x="${tx}" y="${(+ty + 3).toFixed(1)}" text-anchor="middle" class="sm"${tinta ? ` style="fill:${COL[M[(j - 2) / 5]]}"` : ''}>${(j - 2) / 5 + 1}</text>`) }
   }
-  // needle = gear and effort together: each gear has 4 steps (low, medium, high, max)
-  const ei = Math.max(0, ['low', 'medium', 'high', 'max'].indexOf(impegno))
-  const f = k >= 0 ? (k * 4 + ei + 0.5) / 20 : 0, a = ang(f)
+  // needle = gear and effort together: each gear has 5 steps (low, medium, high, xhigh, max)
+  const ei = Math.max(0, ['low', 'medium', 'high', 'xhigh', 'max'].indexOf(impegno))
+  const f = k >= 0 ? (k * 5 + ei + 0.5) / 25 : 0, a = ang(f)
   const [nx, ny] = pt(a, R - 10), [bx, by] = pt(a + Math.PI, 8)
   // ignition: the needle sweeps to the end of the scale and comes back to its place (rotation in screen degrees)
   const gf = 210 - 240 * f
   const vib = ACC ? `<animateTransform attributeName="transform" type="rotate" values="${(gf - 210).toFixed(1)} ${cx} ${cy};${(gf + 30).toFixed(1)} ${cx} ${cy};0 ${cx} ${cy}" keyTimes="0;0.55;1" dur="1.2s" fill="freeze"/>` : ''
   out.push(`<line x1="${bx}" y1="${by}" x2="${nx}" y2="${ny}" style="stroke:#c0392b;stroke-width:2.2;stroke-linecap:round">${vib}</line>`)
   out.push(`<circle cx="${cx}" cy="${cy}" r="5" style="fill:#3a3a36"/>`)
-  const nome = k >= 0 ? M[k].toUpperCase() : tr('ferma')
+  const nome = k >= 0 ? nomeMarcia(M[k]) : tr('ferma')
   out.push(`<text x="${cx}" y="${cy + 24}" text-anchor="middle" style="font-weight:600${k >= 0 && tinta ? `;fill:${COL[M[k]]}` : ''}">${nome}${dir === '▲' ? ' ↑' : dir === '▼' ? ' ↓' : ''}</text>`)
-  if (impegno) out.push(`<text x="${cx}" y="${cy + 38}" text-anchor="middle" class="sm mu">${impegno}</text>`)
+  if (impegno) out.push(`<text x="${cx}" y="${cy + 38}" text-anchor="middle" class="sm mu">${tr(({ low: 'basso', medium: 'medio', high: 'alto', xhigh: 'extra', max: 'max' } as Record<string, string>)[impegno] ?? impegno)}</text>`)
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="90" viewBox="0 0 140 132">${STILE}${out.join('')}</svg>`, width: 96 }
 }
 
 // Grid of the 4 gears: colour, name, agents used and their tokens in this session.
 function svgGriglia(pl: Record<string, [number, number]>, tinta: boolean, attuale: string | null) {
-  const liv = ['light', 'medium', 'high', 'opus']
-  const mod: Record<string, string> = { light: 'Haiku', medium: 'Sonnet', high: 'Sonnet', opus: 'Opus' }
+  const liv = ['light', 'medium', 'high', 'opus', 'max']
+  const mod: Record<string, string> = { light: 'Haiku', medium: 'Sonnet', high: 'Sonnet', opus: 'Opus', max: 'Opus' }
+  const eff: Record<string, string> = { light: 'basso', medium: 'basso', high: 'alto', opus: 'alto', max: 'max' }
   const righe = liv.map((k, i) => {
     const [n, tk] = pl[k] ?? [0, 0]
-    const y = 28 + i * 16
-    const on = attuale === k || (attuale === 'max' && k === 'opus')
-    return `<rect x="0" y="${y - 9}" width="8" height="8" rx="2" style="fill:${tinta ? COL[k] : GRIGIO}"/>`
-      + `<text x="14" y="${y}" class="sm"${on ? ` style="fill:${tinta ? COL[k] : GRIGIO}"` : ''}>${k.toUpperCase()}</text>`
-      + `<text x="86" y="${y}" class="mu">${mod[k]}</text>`
-      + `<text x="170" y="${y}" class="mu" text-anchor="end">${n}</text>`
-      + `<text x="254" y="${y}"${n ? '' : ' class="mu"'} text-anchor="end">${kt(tk)}</text>`
+    const y = 42 + i * 16
+    const on = attuale === k
+    return `<text x="0" y="${y}" class="mu">${i + 1}</text><rect x="12" y="${y - 9}" width="8" height="8" rx="2" style="fill:${tinta ? COL[k] : GRIGIO}"/>`
+      + `<text x="26" y="${y}" class="sm"${on ? ` style="fill:${tinta ? COL[k] : GRIGIO}"` : ''}>${nomeMarcia(k)}</text>`
+      + `<text x="82" y="${y}" class="mu">${mod[k]}</text><text x="130" y="${y}" class="mu">${tr(eff[k])}</text>`
+      + `<text x="208" y="${y}" class="mu" text-anchor="end">${n}</text>`
+      + `<text x="288" y="${y}"${n ? '' : ' class="mu"'} text-anchor="end">${kt(tk)}</text>`
   })
-  const testa = `<text x="86" y="10" class="mu sm">${tr('modello')}</text><text x="170" y="10" class="mu sm" text-anchor="end">${tr('agenti')}</text><text x="254" y="10" class="mu sm" text-anchor="end">${tr('token')}</text>`
-  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="258" height="84" viewBox="0 0 258 84">${STILE}${testa}${righe.join('')}</svg>`, width: 258 }
+  const testa = `<text x="0" y="10" class="sm">Gear / ${tr('Marce')}</text><text x="82" y="24" class="mu sm">${tr('modello')}</text><text x="130" y="24" class="mu sm">${tr('effort')}</text><text x="208" y="24" class="mu sm" text-anchor="end">${tr('agenti')}</text><text x="288" y="24" class="mu sm" text-anchor="end">${tr('token')}</text>`
+  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="292" height="114" viewBox="0 0 292 114">${STILE}${testa}${righe.join('')}</svg>`, width: 292 }
 }
 
 async function apriSito($: EngineInterface) {
@@ -746,6 +830,7 @@ async function apriChiudi($: EngineInterface) {
 
 let last = 0
 let fase = '' // what the model streams now: pensa or scrive (main chat)
+let CARTELLA = '' // the session's folder: where the chat works when no tool names a file
 let carLetto = 0 // value of car when the transcript was last read
 let car = 0 // real tokens of this turn, from the usage the model sends at the end of every step
 let inizioTurno = '' // start of the current turn, for the live view
@@ -873,20 +958,22 @@ export const register: Register = (on, options) => {
       return <Button key={k} plain onPress={fn}><Text color={col} dimColor={!col}>{s}</Text></Button>
     }
     const pa = await read($, passo)
-    const grpNuovo = svgRiga(d, tinta, compact, pa, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, null, 0, car, true)
+    const grpNuovo = svgRiga(d, tinta, compact, pa, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, null, await $.clock.now().catch(() => 0), car, true)
     // At the start of a job the turn's numbers are still zero and the group would vanish: keep the last one that had content.
     if (grpNuovo.width > 4) ultimoGrp = grpNuovo
     const grp1 = grpNuovo.width > 4 ? grpNuovo : ultimoGrp
     const riga1 = svgRiga(d, tinta, compact, pa, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, await read($, attivo).catch(() => null), await $.clock.now().catch(() => 0), car)
+    // The app did not show the group as a separate image: it is drawn inside the main one, 24 px after the lines.
+    // Model, tokens and score bar sit in the right block, next to the arrows and the logo.
     const testaDesk = (
       <Box flexDirection="row" alignItems="center" gap={1} width={e.props.bodyColumns}>
         <Box flexGrow={1} flexShrink={1} overflow="hidden">
-          <Box flexShrink={0} width={riga1.width}>
+          <Box flexShrink={0}>
             <Svg source={riga1.source} alt={riga(d, compact)} width={riga1.width} height={26} />
           </Box>
         </Box>
-        <Box flexShrink={0} flexDirection="row" gap={0} alignItems="center">
-          {grp1.width > 4 ? <Box flexShrink={0} width={grp1.width}><Svg source={grp1.source} alt="" width={grp1.width} height={26} /></Box> : null}
+        <Box flexShrink={0} flexDirection="row" gap={1} alignItems="center">
+          {grp1.width > 4 ? <Box flexShrink={0}><Svg source={grp1.source} alt="modello e token" width={grp1.width} height={26} /></Box> : null}
           <Box flexDirection="column" alignItems="center">
           {tastino('tendina', open ? '↓' : '↑', () => apriChiudi($), undefined, 18)}
           {tastino('pannello', '↗', () => apriPannello($).catch(() => $.ui.toast(tr('Gear: pannello non aperto'))), undefined, 18)}
@@ -1000,12 +1087,12 @@ export const register: Register = (on, options) => {
     const piccolo = (k: string, s: string, fn: () => unknown, col?: string) => {
       if (!desk) return tasto(k, s, fn, col)
       const g = svgScritta(s, col, s.length === 1 ? 16 : 0)
-      // the clear button spans the whole word, so no small focus box shows in the middle
+      // the clear button is longer than the word and clipped by the box of the drawing, so its focus box is exactly the word's box
       return (
         <Box key={k} position="relative">
           <Svg source={g.source} alt={s} width={g.width} height={18} />
           <Box position="absolute" top={0} left={0} right={0} bottom={0} overflow="hidden" flexDirection="row">
-            <Button key={k} plain onPress={fn}><Text size="footnote">{'\u00a0'.repeat(Math.max(1, Math.floor(g.width / 7)))}</Text></Button>
+            <Button key={k} plain onPress={fn}><Text size="footnote">{'\u00a0'.repeat(Math.max(1, Math.floor(g.width / 9)))}</Text></Button>
           </Box>
         </Box>
       )
@@ -1046,10 +1133,10 @@ export const register: Register = (on, options) => {
           {r5 ? (desk ? scritta(r5) : <Text dimColor>{r5}</Text>) : null}
           {desk && (d.stok || d.tok) ? (() => { const g = svgBarra(d.perliv ?? {}, d.stok || d.tok, tinta); return <Svg source={g.source} alt="chi ha usato i token" width={g.width} height={46} /> })() : null}
         </Box>
-        {desk ? (() => { const sMin = lav0 ? (oraJ - inizio) / 60000 : 0; const c = svgCruscotto(d.livello ?? livChat(d.chat), d.dir, tinta, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, p0?.effort ?? '', sMin > 0.05 ? Math.round(car / sMin) : 0); return <Box flexShrink={0}><Svg source={c.source} alt="contachilometri: marcia e impegno" width={c.width} height={90} /></Box> })() : null}
-        {desk ? (() => { const g = svgGriglia(d.perliv ?? {}, tinta, d.livello); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={84} /></Box> })() : null}
+        {desk ? (() => { const sMin = lav0 ? (oraJ - inizio) / 60000 : 0; const c = svgCruscotto(livAdesso(d), d.dir, tinta, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, p0?.effort ?? '', sMin > 0.05 ? Math.round(car / sMin) : 0); return <Box flexShrink={0}><Svg source={c.source} alt="contachilometri: marcia e impegno" width={c.width} height={90} /></Box> })() : null}
+        {desk ? (() => { const g = svgGriglia(d.perliv ?? {}, tinta, livAdesso(d)); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={114} /></Box> })() : null}
         </Box>
-        {apriG ? <Box flexDirection="column"><Box flexDirection="row" gap={2}>{Object.keys(GUIDA).map(k => piccolo('lg' + k, k.toUpperCase(), () => update($, lingua, () => k), k === lg ? '#3a3a36' : undefined))}</Box>{(GUIDA[lg] ?? GUIDA.it).map((x, i) => <Box key={'g' + i}>{desk ? scritta(x) : <Text dimColor>{x}</Text>}</Box>)}</Box> : null}
+        {apriG ? <Box flexDirection="column"><Box flexDirection="row" gap={2}>{Object.keys(GUIDA).map(k => <Button key={'lg' + k} plain onPress={() => update($, lingua, () => k)}><Text>{k === lg ? '[' : ' '}{BANDIERA[k] ?? k.toUpperCase()}{k === lg ? ']' : ' '}</Text></Button>)}</Box>{(GUIDA[lg] ?? GUIDA.it).map((x, i) => <Box key={'g' + i}>{desk ? scritta(x) : <Text dimColor>{x}</Text>}</Box>)}</Box> : null}
         {desk ? <Box flexDirection="row" justifyContent="flex-end" alignItems="center" gap={2}>{piccolo('guida', tr(apriG ? '× guida' : '? guida'), () => update($, guida, g => !g))}<Svg source={`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="16" viewBox="0 0 80 16">${STILE}<text x="80" y="12" class="sm mu" text-anchor="end">Gear ${VERSIONE}</text></svg>`} alt={`Gear ${VERSIONE}`} width={80} height={16} /></Box> : <Text dimColor>Gear {VERSIONE}</Text>}
       </Box>,
     )
