@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.107'
+const VERSIONE = '0.6.111'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -445,7 +445,7 @@ function conta(k: string, v: number) {
   return Math.round(x.da + (x.a - x.da) * f)
 }
 
-function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lavora = false, ora: Attivo | null = null, adesso = 0, vivoTok = 0) {
+function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lavora = false, ora: Attivo | null = null, adesso = 0, vivoTok = 0, gruppo = false) {
   const out: string[] = lavora ? [ANIM] : []
   let x = 0
   const H = 26, Y = 18
@@ -460,59 +460,68 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
     out.push(`<text x="${x + w / 2}" y="12" text-anchor="middle" class="sm"${col ? ` style="fill:${col}"` : ''}>${esc(nome)}</text><text x="${x + w / 2}" y="24" text-anchor="middle" class="mu" style="font-size:9px">${esc(num)}</text>`)
     x += w
   }
-  const sep = () => { sp(6); out.push(`<circle cx="${x}" cy="12" r="1.3" class="v" style="fill:#b9b9b2"/>`); sp(8) }
+  const sep = () => { sp(14) }
   const celle = (f: number, col: string) => {
     const n = Math.max(0, Math.min(5, Math.round(f * 5)))
     for (let i = 0; i < 5; i++) out.push(`<rect x="${x + i * 10}" y="6.5" width="8" height="11" rx="1.8"${i < n ? ` style="fill:${tinta ? col : '#8a8a84'}"` : ' class="v"'}/>`)
     x += 50 + 4
+  }
+  // Model + tokens and the score bar, drawn as their own small image next to the arrows.
+  if (gruppo) {
+  // The model the chat is using now, e.g. 'opus-5-5' -> 'Opus 5.5'.
+  // Model and effort the chat is using now, then the tokens of the current job per model.
+  const mod = p?.model || d.chat
+  // Tokens of the current job per model; nothing while the job has used none yet.
+  if (lavora && vivoTok > 0) { colonna(nomeModello(mod || d.chat).split(' ')[0], tinta ? colMod(mod || d.chat) : undefined, `${kt(conta('vivo', vivoTok))}tk`) }
+  else if (d.tokmod && d.tokmod.length > 0) { d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(6); colonna(nomeModello(m).split(' ')[0], tinta ? colMod(m) : undefined, `${kt(n)}tk`) }) }
+  else if (d.tok > 0) { t(`${kt(d.tok)} tk`, 'mu') }
+  // Whole session: all tokens so far and how many agents it has used.
+  const io = indiceOtt(d)
+  if (io !== null) { sp(x > 0 ? 6 : 0)
+    const ci = tinta ? (io >= 50 ? COL.medium : io >= 20 ? COL.high : '#c0714f') : '#8a8a84'
+    // Small bar filled to the index, so the number reads as a score out of 100 without the word.
+    out.push(`<rect x="${x}" y="6" width="32" height="7" rx="3" class="v"/><rect x="${x}" y="6" width="${Math.max(2, io * 0.32)}" height="7" rx="3" style="fill:${ci}"/><text x="${x + 16}" y="23" text-anchor="middle" style="font-size:9px${tinta ? `;fill:${ci}` : ''}">${io}%</text>`)
+    x += 38 }
+    const w = Math.ceil(x + 2)
+    return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${H}" viewBox="0 0 ${w} ${H}">${STILE}${out.join('')}</svg>`, width: w }
   }
   // Gear ladder: five steps rising from LIGHT to MAX, filled up to the current gear, each in its own color; then the name and the step.
   const MARCE = ['light', 'medium', 'high', 'opus', 'max']
   const k = d.livello ? MARCE.indexOf(d.livello) : -1
   // The name sits under the ladder, both centred in one block as wide as the wider of the two.
   const nome = d.livello ? d.livello.toUpperCase() : ''
-  const Wb = Math.max(27.5, Math.ceil(largo(nome) * 0.85))
-  const ox = (Wb - 27.5) / 2
+  const Wb = Math.max(22, Math.ceil(largo(nome) * 0.7))
+  const ox = (Wb - 22) / 2
   MARCE.forEach((m, i) => {
-    const h = 3 + i * 2.2
+    const h = 2.5 + i * 1.8
     // while working the active step glows: a soft halo behind it and a slow pulse
-    if (lavora && i === k) out.push(`<rect x="${ox + i * 5.5 - 1.5}" y="${14.5 - h}" width="7" height="${h + 3}" rx="2.5" class="gp" style="fill:${tinta ? COL[m] : '#55554f'};opacity:.35;filter:blur(1.5px)"/>`)
+    if (lavora && i === k) out.push(`<rect x="${ox + i * 4.5 - 1.2}" y="${14.5 - h}" width="5.6" height="${h + 3}" rx="2.5" class="gp" style="fill:${tinta ? COL[m] : '#55554f'};opacity:.35;filter:blur(1.5px)"/>`)
     const acc = ACC ? `<animate attributeName="opacity" values="0;0;1" keyTimes="0;${(i * 0.15).toFixed(2)};1" dur="${(0.3 + i * 0.15).toFixed(2)}s" fill="freeze"/>` : ''
-    out.push(`<rect x="${ox + i * 5.5}" y="${14 - h}" width="4" height="${h}" rx="1"${lavora && i === k ? ' class="gp"' : ''}${i <= k ? ` style="fill:${tinta ? COL[m] : '#55554f'}"` : ' class="v"'}>${acc}</rect>`)
+    out.push(`<rect x="${ox + i * 4.5}" y="${14 - h}" width="3.2" height="${h}" rx="1"${lavora && i === k ? ' class="gp"' : ''}${i <= k ? ` style="fill:${tinta ? COL[m] : '#55554f'}"` : ' class="v"'}>${acc}</rect>`)
   })
-  x = Wb + 8
+  x = Wb + 3
   if (k >= 0) {
-    out.push(`<text x="${Wb / 2}" y="24" text-anchor="middle" class="sm"${tinta ? ` style="fill:${COL[d.livello!]}"` : ''}>${esc(nome)}</text>`)
+    out.push(`<text x="${Wb / 2}" y="24" text-anchor="middle" style="font-size:8px;letter-spacing:.1px${tinta ? `;fill:${COL[d.livello!]}` : ''}">${esc(nome)}</text>`)
     if (d.dir === '▲' || d.dir === '▼') { t(d.dir === '▲' ? '↑' : '↓', 'sm', tinta ? (d.dir === '▲' ? COL.high : COL.medium) : undefined); sp(2) }
   } else t(tr('nessuna marcia'), 'mu')
-  // Live: what is running right now (tool and its target) and for how long; 'pronto' when idle.
-  sep()
+  // Two lines, one per job: what runs right now (tool, target, time) above, the agent or chat task below.
+  const a0 = d.attivi[0]
+  const riga2 = compact ? '' : a0 ? `▶ ${a0.nome}: ${a0.desc.slice(0, 40)}` : d.compito ? `${tr('chat')}: ${d.compito.slice(0, 48)}` : ''
+  let riga1 = tr('pronto')
   if (lavora && ora) {
-    out.push(`<circle cx="${x + 4}" cy="12" r="3.5" class="gp" style="fill:${tinta ? COL[d.livello ?? 'medium'] ?? '#5c82a8' : '#55554f'}"/>`); sp(12)
-    const sp2 = spiega(ora); t(sp2.cosa, '', tinta ? '#3a3a36' : undefined); if (sp2.dove) { sp(5); t(sp2.dove.slice(0, 30), 'mu') }
-    const sec = adesso && ora.t0 ? Math.max(0, Math.round((adesso - ora.t0) / 1000)) : 0
-    if (sec) { sp(5); t(dur(sec), 'mu') }
+    const sp2 = spiega(ora), sec = adesso && ora.t0 ? Math.max(0, Math.round((adesso - ora.t0) / 1000)) : 0
+    riga1 = `${sp2.cosa}${sp2.dove ? ' ' + sp2.dove.slice(0, 30) : ''}${sec ? ' ' + dur(sec) : ''}`
   } else if (lavora) {
-    t(tr('pensa…'), 'mu')
     const s0 = adesso && inizioTurno ? Math.max(0, Math.round((adesso - Date.parse(inizioTurno)) / 1000)) : 0
-    if (s0) { sp(5); t(dur(s0), 'mu') }
-  } else t(tr('pronto'), 'mu')
+    riga1 = `${tr('pensa…')}${s0 ? ' ' + dur(s0) : ''}`
+  }
+  if (riga2) {
+    const col2 = a0 && tinta ? COL[a0.liv] ?? GRIGIO : undefined
+    out.push(`<text x="${x}" y="12" class="${lavora ? 'sm' : 'sm mu'}"${lavora && tinta ? ' style="fill:#3a3a36"' : ''}>${esc(riga1)}</text><text x="${x}" y="24" class="sm"${col2 ? ` style="fill:${col2}"` : ''}>${esc(riga2)}</text>`)
+    x += Math.max(largo(riga1), largo(riga2)) * 0.85
+  } else t(riga1, lavora ? '' : 'mu', lavora && tinta ? '#3a3a36' : undefined)
   // Agents running now: name and model of the first, +N for the others.
   if (d.attivi?.length) { const g = d.attivi[0]; sep(); t(g.nome, '', tinta ? COL[g.liv] : undefined); sp(5); t(nomeModello(g.model), 'mu'); if (d.attivi.length > 1) { sp(5); t(`+${d.attivi.length - 1}`, 'mu') } }
-  // The model the chat is using now, e.g. 'opus-5-5' -> 'Opus 5.5'.
-  // Model and effort the chat is using now, then the tokens of the current job per model.
-  const mod = p?.model || d.chat
-  // Tokens of the current job per model; nothing while the job has used none yet.
-  if (lavora && vivoTok > 0) { sep(); colonna(nomeModello(mod || d.chat).split(' ')[0], tinta ? colMod(mod || d.chat) : undefined, `${kt(conta('vivo', vivoTok))}tk`) }
-  else if (d.tokmod && d.tokmod.length > 0) { sep(); d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); colonna(nomeModello(m).split(' ')[0], tinta ? colMod(m) : undefined, `${kt(n)}tk`) }) }
-  else if (d.tok > 0) { sep(); t(`${kt(d.tok)} tk`, 'mu') }
-  // Whole session: all tokens so far and how many agents it has used.
-  const io = indiceOtt(d)
-  if (io !== null) { sep()
-    const ci = tinta ? (io >= 50 ? COL.medium : io >= 20 ? COL.high : '#c0714f') : '#8a8a84'
-    // Small bar filled to the index, so the number reads as a score out of 100 without the word.
-    out.push(`<rect x="${x}" y="6" width="32" height="7" rx="3" class="v"/><rect x="${x}" y="6" width="${Math.max(2, io * 0.32)}" height="7" rx="3" style="fill:${ci}"/><text x="${x + 16}" y="23" text-anchor="middle" style="font-size:9px${tinta ? `;fill:${ci}` : ''}">${io}%</text>`)
-    x += 38 }
   if (!compact) {
     // Only what is useful now: the current job (since your last message); counts at zero and a missing task list are left out.
     const n: [number, string, string | undefined][] = [[d.lavorano, '▶', COL.medium], [d.fermi, '⏸', COL.high], [d.completi, '✓', undefined], [d.interrotti, '✗', undefined]]
@@ -524,10 +533,6 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
       if (tokAg > 0) { sp(8); t(`${kt(tokAg)} tk`) }
     }
     // Who is working now and on what: the working agent and its task, else the main chat and the current step or your last request.
-    const a0 = d.attivi[0]
-    if (a0 || d.compito) sep()
-    if (a0) t(`▶ ${a0.nome}: ${a0.desc.slice(0, 40)}`, '', tinta ? COL[a0.liv] ?? GRIGIO : undefined)
-    else if (d.compito) t(`${tr('chat')}: ${d.compito.slice(0, 48)}`)
     if (d.perc !== null) { sep(); celle(d.perc, COL.medium); t(`${Math.round(d.perc * 100)}% (${d.fatti}/${d.tot} ${tr('passi')})`) }
     // Time only as an estimate of what is left, when a task list allows one; a bare timer told nothing.
     if (d.eta !== null) { sep(); t(`${tr('restano ~')}${dur(d.eta)}`, '', tinta ? COL.high : undefined) }
@@ -850,7 +855,7 @@ export const register: Register = (on, options) => {
     // Small button on desktop: the word drawn like the bar, a transparent button laid over it (as on the logo).
     const tastino = (k: string, s: string, fn: () => unknown, col?: string, alt = 24) => {
       if (!desk) return tasto(k, s, fn, col)
-      const g = svgScritta(s, col, s.length === 1 ? 14 : 0)
+      const g = svgScritta(s, col, s.length === 1 ? 16 : 0)
       return (
         <Box key={k} position="relative">
           <Svg source={g.source} alt={s} width={g.width} height={alt} />
@@ -864,7 +869,9 @@ export const register: Register = (on, options) => {
       // A Button holds only strings and Text (an Svg inside is refused), so its label is Text on every surface.
       return <Button key={k} plain onPress={fn}><Text color={col} dimColor={!col}>{s}</Text></Button>
     }
-    const riga1 = svgRiga(d, tinta, compact, await read($, passo), Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, await read($, attivo).catch(() => null), await $.clock.now().catch(() => 0), car)
+    const pa = await read($, passo)
+    const grp1 = svgRiga(d, tinta, compact, pa, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, null, 0, car, true)
+    const riga1 = svgRiga(d, tinta, compact, pa, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, await read($, attivo).catch(() => null), await $.clock.now().catch(() => 0), car)
     const testaDesk = (
       <Box flexDirection="row" alignItems="center" gap={1} width={e.props.bodyColumns}>
         <Box flexGrow={1} flexShrink={1} overflow="hidden">
@@ -873,9 +880,10 @@ export const register: Register = (on, options) => {
           </Box>
         </Box>
         <Box flexShrink={0} flexDirection="row" gap={0} alignItems="center">
+          {grp1.width > 4 ? <Box flexShrink={0} width={grp1.width}><Svg source={grp1.source} alt="" width={grp1.width} height={26} /></Box> : null}
           <Box flexDirection="column" alignItems="center">
-          {tastino('tendina', open ? '↓' : '↑', () => apriChiudi($), undefined, 14)}
-          {tastino('pannello', '↗', () => apriPannello($).catch(() => $.ui.toast(tr('Gear: pannello non aperto'))), undefined, 14)}
+          {tastino('tendina', open ? '↓' : '↑', () => apriChiudi($), undefined, 18)}
+          {tastino('pannello', '↗', () => apriPannello($).catch(() => $.ui.toast(tr('Gear: pannello non aperto'))), undefined, 18)}
           </Box>
           {/* A button takes only text and the app does not follow a link inside an SVG, so a transparent button lies over the logo and opens the site. */}
           <Box position="relative">
@@ -985,7 +993,7 @@ export const register: Register = (on, options) => {
     const chiede = (await read($, comando).catch(() => '')) === 'reset?'
     const piccolo = (k: string, s: string, fn: () => unknown, col?: string) => {
       if (!desk) return tasto(k, s, fn, col)
-      const g = svgScritta(s, col, s.length === 1 ? 14 : 0)
+      const g = svgScritta(s, col, s.length === 1 ? 16 : 0)
       // the clear button spans the whole word, so no small focus box shows in the middle
       return (
         <Box key={k} position="relative">
