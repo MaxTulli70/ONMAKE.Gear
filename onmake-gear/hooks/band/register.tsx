@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.212'
+const VERSIONE = '0.6.213'
 const DATA = '03/11/2026' // date of this version, shown next to it
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
@@ -680,7 +680,7 @@ function svgBarra(pl: Record<string, [number, number]>, tot: number, tinta: bool
     lx += 16 + largo(s) * 1.0 + 22
   }
   const Wt = Math.max(W, Math.ceil(lx)) // the legend can be wider than the bar
-  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${Wt}" height="64" viewBox="0 0 ${Wt} 64">${STILE}${out.join('')}</svg>`, width: Wt }
+  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${Wt}" height="74" viewBox="0 0 ${Wt} 74">${STILE}${out.join('')}</svg>`, width: Wt }
 }
 
 // Dashboard gauge: half dial with the 5 gears as coloured sectors, needle on the active one, arrow up/down.
@@ -1151,7 +1151,7 @@ export const register: Register = (on, options) => {
         {desk ? (() => { const sMin = lav0 ? (oraJ - inizio) / 60000 : 0; const c = svgCruscotto(livAdesso(d), d.dir, tinta, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, p0?.effort ?? '', sMin > 0.05 ? Math.round(car / sMin) : 0); return <Box flexShrink={0} marginTop={2}><Svg source={c.source} alt="contachilometri: marcia e impegno" width={c.width} height={90} /></Box> })() : null}
         {desk ? (() => { const g = svgGriglia(d.perliv ?? {}, tinta, livAdesso(d)); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={114} /></Box> })() : null}
         </Box>
-        {desk && (d.stok || d.tok) ? (() => { const g = svgBarra(d.perliv ?? {}, d.stok || d.tok, tinta); return <Svg source={g.source} alt="chi ha usato i token" width={g.width} height={50} /> })() : null}
+        {desk && (d.stok || d.tok) ? (() => { const g = svgBarra(d.perliv ?? {}, d.stok || d.tok, tinta); return <Svg source={g.source} alt="chi ha usato i token" width={g.width} height={58} /> })() : null}
         {apriG ? <Box flexDirection="column"><Box flexDirection="row" gap={2}>{Object.keys(GUIDA).map(k => <Button key={'lg' + k} plain onPress={() => update($, lingua, () => k)}><Text>{k === lg ? '[' : ' '}{BANDIERA[k] ?? k.toUpperCase()}{k === lg ? ']' : ' '}</Text></Button>)}</Box>{(GUIDA[lg] ?? GUIDA.it).map((x, i) => <Box key={'g' + i}>{desk ? scritta(x, 560) : <Text dimColor>{x}</Text>}</Box>)}</Box> : null}
         {desk ? <Box flexDirection="row" justifyContent="flex-end" alignItems="center" gap={2}>{piccolo('guida', tr(apriG ? '× guida' : '? guida'), () => update($, guida, g => !g))}<Svg source={`<svg xmlns="http://www.w3.org/2000/svg" width="150" height="16" viewBox="0 0 150 16">${STILE}<text x="150" y="12" class="sm mu" text-anchor="end">Gear ${VERSIONE} · ${DATA}</text></svg>`} alt={`Gear ${VERSIONE}`} width={150} height={16} /></Box> : <Text dimColor>Gear {VERSIONE}</Text>}
       </Box>,
