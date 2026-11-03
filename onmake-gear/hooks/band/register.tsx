@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.114'
+const VERSIONE = '0.6.115'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -482,7 +482,7 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
     // Small bar filled to the index, so the number reads as a score out of 100 without the word.
     out.push(`<rect x="${x}" y="6" width="32" height="7" rx="3" class="v"/><rect x="${x}" y="6" width="${Math.max(2, io * 0.32)}" height="7" rx="3" style="fill:${ci}"/><text x="${x + 16}" y="23" text-anchor="middle" style="font-size:9px${tinta ? `;fill:${ci}` : ''}">${io}%</text>`)
     x += 38 }
-    const w = Math.ceil(x + 14)
+    const w = Math.ceil(x + 2)
     return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${H}" viewBox="0 0 ${w} ${H}">${STILE}${out.join('')}</svg>`, width: w }
   }
   // Gear ladder: five steps rising from LIGHT to MAX, filled up to the current gear, each in its own color; then the name and the step.
@@ -537,7 +537,7 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
     // Time only as an estimate of what is left, when a task list allows one; a bare timer told nothing.
     if (d.eta !== null) { sep(); t(`${tr('restano ~')}${dur(d.eta)}`, '', tinta ? COL.high : undefined) }
   }
-  const w = Math.ceil(x + 14)
+  const w = Math.ceil(x + 2)
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${H}" viewBox="0 0 ${w} ${H}">${STILE}${out.join('')}</svg>`, width: w }
 }
 
@@ -882,12 +882,12 @@ export const register: Register = (on, options) => {
         <Box flexShrink={0} flexDirection="row" gap={0} alignItems="center">
           {grp1.width > 4 ? <Box flexShrink={0} width={grp1.width}><Svg source={grp1.source} alt="" width={grp1.width} height={26} /></Box> : null}
           <Box flexDirection="column" alignItems="center">
-          {tastino('tendina', open ? '↓' : '↑', () => apriChiudi($), undefined, 13.5)}
-          {tastino('pannello', '↗', () => apriPannello($).catch(() => $.ui.toast(tr('Gear: pannello non aperto'))), undefined, 13.5)}
+          {tastino('tendina', open ? '↓' : '↑', () => apriChiudi($), undefined, 18)}
+          {tastino('pannello', '↗', () => apriPannello($).catch(() => $.ui.toast(tr('Gear: pannello non aperto'))), undefined, 18)}
           </Box>
           {/* A button takes only text and the app does not follow a link inside an SVG, so a transparent button lies over the logo and opens the site. */}
           <Box position="relative">
-            <Svg source={LOGO} alt="ONMAKE" width={24} height={25.5} />
+            <Svg source={LOGO} alt="ONMAKE" width={32} height={34} />
             <Box position="absolute" top={0} left={0} right={0} bottom={0} justifyContent="center" alignItems="center">
               <Button key="onmake" plain onPress={() => apriSito($).catch(() => $.ui.toast(tr('Gear: sito non aperto')))}>
                 <Text>{'\u2003\u2003'}</Text>
