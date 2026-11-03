@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.196'
+const VERSIONE = '0.6.197'
 const DATA = '03/11/2026' // date of this version, shown next to it
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
@@ -667,18 +667,20 @@ function svgBarra(pl: Record<string, [number, number]>, tot: number, tinta: bool
   const ag = liv.reduce((a, k) => a + (pl[k]?.[1] ?? 0), 0)
   const parti: [string, number, string][] = [['chat', Math.max(0, tot - ag), '#c0714f'], ...liv.map(k => [nomeMarcia(k), pl[k]?.[1] ?? 0, COL[k]] as [string, number, string])]
   let x = 0, lx = 0
-  const out: string[] = [`<text x="0" y="10" class="mu sm">${tr('chi ha usato i token')}</text>`, `<rect x="0" y="16" width="${W}" height="10" rx="3" class="v"/>`]
-  for (const [nome, n, col] of parti) {
+  const out: string[] = [`<text x="0" y="12" class="mu" style="font-size:11px">${tr('chi ha usato i token')}</text>`, `<rect x="0" y="18" width="${W}" height="14" rx="3" class="v"/>`]
+  // every model with tokens gets at least 4px: the chat gives that space back, its real share stays in the legend
+  const piccoli = parti.slice(1).reduce((a, [, n]) => a + (n ? Math.max(4, n / (tot || 1) * W) : 0), 0)
+  for (const [i, [nome, n, col]] of parti.entries()) {
     if (!tot || !n) continue
-    const w = Math.max(2, n / tot * W)
-    out.push(`<rect x="${x.toFixed(1)}" y="16" width="${w.toFixed(1)}" height="10" style="fill:${tinta ? col : GRIGIO}"/>`)
+    const w = i === 0 ? Math.max(4, W - piccoli) : Math.max(4, n / tot * W)
+    out.push(`<rect x="${x.toFixed(1)}" y="18" width="${w.toFixed(1)}" height="14" style="fill:${tinta ? col : GRIGIO}"/>`)
     x += w
     const s = `${nome} ${(n / tot * 100).toFixed(1).replace('.', ',')}% · ${n >= 1e6 ? (n / 1e6).toFixed(1).replace('.', ',') + 'M' : kt(n)}`
-    out.push(`<rect x="${lx}" y="33" width="8" height="8" rx="2" style="fill:${tinta ? col : GRIGIO}"/><text x="${lx + 12}" y="41" class="sm mu">${s}</text>`)
-    lx += 12 + largo(s) * 0.9 + 14
+    out.push(`<rect x="${lx}" y="40" width="10" height="10" rx="2" style="fill:${tinta ? col : GRIGIO}"/><text x="${lx + 14}" y="49" class="mu" style="font-size:11px">${s}</text>`)
+    lx += 14 + largo(s) * 1.0 + 16
   }
   const Wt = Math.max(W, Math.ceil(lx)) // the legend can be wider than the bar
-  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${Wt}" height="46" viewBox="0 0 ${Wt} 46">${STILE}${out.join('')}</svg>`, width: Wt }
+  return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${Wt}" height="56" viewBox="0 0 ${Wt} 56">${STILE}${out.join('')}</svg>`, width: Wt }
 }
 
 // Dashboard gauge: half dial with the 5 gears as coloured sectors, needle on the active one, arrow up/down.
@@ -1145,7 +1147,7 @@ export const register: Register = (on, options) => {
           {desk ? scritta(r1) : <Text dimColor>{r1}</Text>}
           {desk ? scritta(r3) : <Text dimColor>{r3}</Text>}
           {r5 ? (desk ? scritta(r5) : <Text dimColor>{r5}</Text>) : null}
-          {desk && (d.stok || d.tok) ? (() => { const g = svgBarra(d.perliv ?? {}, d.stok || d.tok, tinta); return <Svg source={g.source} alt="chi ha usato i token" width={g.width} height={46} /> })() : null}
+          {desk && (d.stok || d.tok) ? (() => { const g = svgBarra(d.perliv ?? {}, d.stok || d.tok, tinta); return <Svg source={g.source} alt="chi ha usato i token" width={g.width} height={56} /> })() : null}
         </Box>
         {desk ? (() => { const sMin = lav0 ? (oraJ - inizio) / 60000 : 0; const c = svgCruscotto(livAdesso(d), d.dir, tinta, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, p0?.effort ?? '', sMin > 0.05 ? Math.round(car / sMin) : 0); return <Box flexShrink={0}><Svg source={c.source} alt="contachilometri: marcia e impegno" width={c.width} height={90} /></Box> })() : null}
         {desk ? (() => { const g = svgGriglia(d.perliv ?? {}, tinta, livAdesso(d)); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={114} /></Box> })() : null}
