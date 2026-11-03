@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.119'
+const VERSIONE = '0.6.120'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -542,6 +542,7 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
 }
 
 // ONMAKE logo (assets/onmake-logo.svg) with its link to the site inside the SVG.
+let ultimoGrp: { source: string; width: number } = { source: '', width: 0 }
 const LOGO = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="32" height="34" viewBox="0 -5 100 114"><a href="https://www.onmake.it" xlink:href="https://www.onmake.it" target="_blank" rel="noopener"><title>onmake.it</title><defs> <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"> <stop offset="0" stop-color="#8fbc7c"/><stop offset="0.45" stop-color="#6aa057"/><stop offset="1" stop-color="#5f9a4e"/> </linearGradient> <linearGradient id="f" x1="0" y1="0" x2="1" y2="1"> <stop offset="0" stop-color="#4a4a48"/><stop offset="1" stop-color="#2f2f2e"/> </linearGradient> </defs> <path d="M50 3 L92.4 27.5 Q94 28.4 94 30.3 L94 73.7 Q94 75.6 92.4 76.5 L50 101 L7.6 76.5 Q6 75.6 6 73.7 L6 30.3 Q6 28.4 7.6 27.5 Z" fill="url(#f)"/> <path d="M50 12.5 L85.5 33 L85.5 71 L50 91.5 L14.5 71 L14.5 33 Z" fill="url(#g)" stroke="#6b6b69" stroke-width="0.8"/> <path d="M14.5 33 L50 12.5 L85.5 33 L85.5 40 Q50 32 14.5 66 Z" fill="#ffffff" opacity="0.12"/> <text x="50" y="58" text-anchor="middle" font-family="Futura, 'Avenir Next', 'Century Gothic', system-ui, sans-serif" font-weight="600" font-size="15.5" textLength="66" lengthAdjust="spacingAndGlyphs" fill="#363634">ONMAKE</text></a></svg>`
 const SITO = 'https://www.onmake.it'
 
@@ -870,7 +871,10 @@ export const register: Register = (on, options) => {
       return <Button key={k} plain onPress={fn}><Text color={col} dimColor={!col}>{s}</Text></Button>
     }
     const pa = await read($, passo)
-    const grp1 = svgRiga(d, tinta, compact, pa, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, null, 0, car, true)
+    const grpNuovo = svgRiga(d, tinta, compact, pa, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, null, 0, car, true)
+    // At the start of a job the turn's numbers are still zero and the group would vanish: keep the last one that had content.
+    if (grpNuovo.width > 4) ultimoGrp = grpNuovo
+    const grp1 = grpNuovo.width > 4 ? grpNuovo : ultimoGrp
     const riga1 = svgRiga(d, tinta, compact, pa, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, await read($, attivo).catch(() => null), await $.clock.now().catch(() => 0), car)
     const testaDesk = (
       <Box flexDirection="row" alignItems="center" gap={1} width={e.props.bodyColumns}>
