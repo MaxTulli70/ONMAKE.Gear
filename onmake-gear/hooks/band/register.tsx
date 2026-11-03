@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.113'
+const VERSIONE = '0.6.114'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -875,12 +875,12 @@ export const register: Register = (on, options) => {
     const testaDesk = (
       <Box flexDirection="row" alignItems="center" gap={1} width={e.props.bodyColumns}>
         <Box flexGrow={1} flexShrink={1} overflow="hidden">
-          <Box flexShrink={0} width={Math.round(riga1.width * 0.75)}>
-            <Svg source={riga1.source} alt={riga(d, compact)} width={Math.round(riga1.width * 0.75)} height={19.5} />
+          <Box flexShrink={0} width={riga1.width}>
+            <Svg source={riga1.source} alt={riga(d, compact)} width={riga1.width} height={26} />
           </Box>
         </Box>
         <Box flexShrink={0} flexDirection="row" gap={0} alignItems="center">
-          {grp1.width > 4 ? <Box flexShrink={0} width={Math.round(grp1.width * 0.75)}><Svg source={grp1.source} alt="" width={Math.round(grp1.width * 0.75)} height={19.5} /></Box> : null}
+          {grp1.width > 4 ? <Box flexShrink={0} width={grp1.width}><Svg source={grp1.source} alt="" width={grp1.width} height={26} /></Box> : null}
           <Box flexDirection="column" alignItems="center">
           {tastino('tendina', open ? '↓' : '↑', () => apriChiudi($), undefined, 13.5)}
           {tastino('pannello', '↗', () => apriPannello($).catch(() => $.ui.toast(tr('Gear: pannello non aperto'))), undefined, 13.5)}
