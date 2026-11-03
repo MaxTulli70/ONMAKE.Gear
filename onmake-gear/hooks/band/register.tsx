@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.105'
+const VERSIONE = '0.6.107'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -454,6 +454,12 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
     x += largo(s)
   }
   const sp = (n = 8) => { x += n }
+  // Model and its tokens as two small lines, name above and count under it, centred in one column.
+  const colonna = (nome: string, col: string | undefined, num: string) => {
+    const w = Math.ceil(Math.max(largo(nome) * 0.85, largo(num) * 0.8))
+    out.push(`<text x="${x + w / 2}" y="12" text-anchor="middle" class="sm"${col ? ` style="fill:${col}"` : ''}>${esc(nome)}</text><text x="${x + w / 2}" y="24" text-anchor="middle" class="mu" style="font-size:9px">${esc(num)}</text>`)
+    x += w
+  }
   const sep = () => { sp(6); out.push(`<circle cx="${x}" cy="12" r="1.3" class="v" style="fill:#b9b9b2"/>`); sp(8) }
   const celle = (f: number, col: string) => {
     const n = Math.max(0, Math.min(5, Math.round(f * 5)))
@@ -463,19 +469,20 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
   // Gear ladder: five steps rising from LIGHT to MAX, filled up to the current gear, each in its own color; then the name and the step.
   const MARCE = ['light', 'medium', 'high', 'opus', 'max']
   const k = d.livello ? MARCE.indexOf(d.livello) : -1
+  // The name sits under the ladder, both centred in one block as wide as the wider of the two.
+  const nome = d.livello ? d.livello.toUpperCase() : ''
+  const Wb = Math.max(27.5, Math.ceil(largo(nome) * 0.85))
+  const ox = (Wb - 27.5) / 2
   MARCE.forEach((m, i) => {
-    const h = 4 + i * 2.6
+    const h = 3 + i * 2.2
     // while working the active step glows: a soft halo behind it and a slow pulse
-    if (lavora && i === k) out.push(`<rect x="${i * 5.5 - 1.5}" y="${18.5 - h}" width="7" height="${h + 3}" rx="2.5" class="gp" style="fill:${tinta ? COL[m] : '#55554f'};opacity:.35;filter:blur(1.5px)"/>`)
+    if (lavora && i === k) out.push(`<rect x="${ox + i * 5.5 - 1.5}" y="${14.5 - h}" width="7" height="${h + 3}" rx="2.5" class="gp" style="fill:${tinta ? COL[m] : '#55554f'};opacity:.35;filter:blur(1.5px)"/>`)
     const acc = ACC ? `<animate attributeName="opacity" values="0;0;1" keyTimes="0;${(i * 0.15).toFixed(2)};1" dur="${(0.3 + i * 0.15).toFixed(2)}s" fill="freeze"/>` : ''
-    out.push(`<rect x="${i * 5.5}" y="${20 - h}" width="4" height="${h}" rx="1"${lavora && i === k ? ' class="gp"' : ''}${i <= k ? ` style="fill:${tinta ? COL[m] : '#55554f'}"` : ' class="v"'}>${acc}</rect>`)
+    out.push(`<rect x="${ox + i * 5.5}" y="${14 - h}" width="4" height="${h}" rx="1"${lavora && i === k ? ' class="gp"' : ''}${i <= k ? ` style="fill:${tinta ? COL[m] : '#55554f'}"` : ' class="v"'}>${acc}</rect>`)
   })
-  x = 5 * 5.5 + 8
+  x = Wb + 8
   if (k >= 0) {
-    // The gear name a little smaller than the rest (11 px).
-    const nome = d.livello!.toUpperCase()
-    out.push(`<text x="${x}" y="${Y}" class="sm"${tinta ? ` style="fill:${COL[d.livello!]}"` : ''}>${esc(nome)}</text>`)
-    x += Math.ceil(largo(nome) * 0.85); sp(4)
+    out.push(`<text x="${Wb / 2}" y="24" text-anchor="middle" class="sm"${tinta ? ` style="fill:${COL[d.livello!]}"` : ''}>${esc(nome)}</text>`)
     if (d.dir === '▲' || d.dir === '▼') { t(d.dir === '▲' ? '↑' : '↓', 'sm', tinta ? (d.dir === '▲' ? COL.high : COL.medium) : undefined); sp(2) }
   } else t(tr('nessuna marcia'), 'mu')
   // Live: what is running right now (tool and its target) and for how long; 'pronto' when idle.
@@ -496,8 +503,8 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
   // Model and effort the chat is using now, then the tokens of the current job per model.
   const mod = p?.model || d.chat
   // Tokens of the current job per model; nothing while the job has used none yet.
-  if (lavora && vivoTok > 0) { sep(); t(nomeModello(mod || d.chat).split(' ')[0], '', tinta ? colMod(mod || d.chat) : undefined); sp(4); t(`${kt(conta('vivo', vivoTok))} tk`) }
-  else if (d.tokmod && d.tokmod.length > 0) { sep(); d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); t(nomeModello(m).split(' ')[0], '', tinta ? colMod(m) : undefined); sp(4); t(`${kt(n)} tk`) }) }
+  if (lavora && vivoTok > 0) { sep(); colonna(nomeModello(mod || d.chat).split(' ')[0], tinta ? colMod(mod || d.chat) : undefined, `${kt(conta('vivo', vivoTok))}tk`) }
+  else if (d.tokmod && d.tokmod.length > 0) { sep(); d.tokmod.slice(0, 3).forEach(([m, n], i) => { if (i) sp(8); colonna(nomeModello(m).split(' ')[0], tinta ? colMod(m) : undefined, `${kt(n)}tk`) }) }
   else if (d.tok > 0) { sep(); t(`${kt(d.tok)} tk`, 'mu') }
   // Whole session: all tokens so far and how many agents it has used.
   const io = indiceOtt(d)
