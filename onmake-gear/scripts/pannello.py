@@ -62,6 +62,7 @@ DA = None  # --da: ora del reset parziale (None = tutta la chat)
 def leggi(path):
     """-> dict(model, v=[in,out,cw,cr], a, b, tools, todos)"""
     msgs, ts, model, tools, todos = {}, [], "?", 0, None
+    tasks = []  # step list of the newer Task tools (TaskCreate / TaskUpdate), kept apart from the old TodoWrite list
     ora_mod = None  # modello dell'ultimo messaggio: quello che la chat usa adesso
     ultimo_txt = ""  # prima riga del tuo ultimo messaggio: il compito attuale
     quando, ultimo, todo_t = {}, None, None  # ora di ogni messaggio, ultimo messaggio dell'utente, ora dell'ultimo elenco passi
@@ -95,6 +96,19 @@ def leggi(path):
                     tools += 1
                     if c.get("name") == "TodoWrite" and isinstance(c.get("input", {}).get("todos"), list):
                         todos, todo_t = c["input"]["todos"], t
+                    elif c.get("name") == "TaskCreate" and isinstance(c.get("input"), dict):
+                        tasks.append({"id": str(len(tasks) + 1), "content": str(c["input"].get("subject", "")), "status": "pending"})
+                        todos, todo_t = list(tasks), t
+                    elif c.get("name") == "TaskUpdate" and isinstance(c.get("input"), dict):
+                        i = c["input"]
+                        for k in list(tasks):
+                            if k["id"] == str(i.get("taskId")):
+                                if i.get("status") == "deleted":
+                                    tasks.remove(k)
+                                else:
+                                    k["status"] = i.get("status") or k["status"]
+                                    k["content"] = str(i.get("subject") or k["content"])
+                        todos, todo_t = list(tasks), t
         if not m.get("usage"):
             continue
         mod = m.get("model") if m.get("model") and m["model"] != "<synthetic>" else None
