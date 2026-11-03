@@ -7,7 +7,8 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.185'
+const VERSIONE = '0.6.193'
+const DATA = '03/11/2026' // date of this version, shown next to it
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -40,9 +41,9 @@ async function ricarica($: EngineInterface) {
   const script = `${$.plugin.root}/scripts/pannello.py`
   // Workflow view: only what came after the partial reset (or after the start, if never reset).
   const vv = await read($, vista).catch(() => 'tot')
-  const da = vv === 'wf' ? await read($, reset).catch(() => '') : vv === 'live' ? inizioTurno : ''
+  const rs = vv === 'wf' ? await read($, reset).catch(() => '') : '' // live starts at the last message: the script finds it in the transcript
   CARTELLA = await $.session.cwd()
-  const r = await $.process.run(['python3', script, '--cartella', CARTELLA, '--sessione', await $.session.id(), '--json', ...(da ? ['--da', da] : []), ...(vv === 'tot' ? ['--tutto'] : [])])
+  const r = await $.process.run(['python3', script, '--cartella', CARTELLA, '--sessione', await $.session.id(), '--json', '--vista', vv === 'wf' || vv === 'live' ? vv : 'tot', ...(rs ? ['--reset', rs] : [])])
   if (r.exitCode !== 0) return undefined
   const d = JSON.parse(r.stdout) as Dati
   if (mio !== giro) return d
@@ -91,6 +92,7 @@ const TR: Record<string, Record<string, string>> = {
     'lavora': 'working',
     'nessuna marcia': 'no gear',
     'pronto': 'ready',
+    'Tabella agenti': 'Agents table',
     'medio': 'medium',
     'extra': 'extra',
     'lavoro': 'work',
@@ -184,6 +186,7 @@ const TR: Record<string, Record<string, string>> = {
     'lavora': 'arbeitet',
     'nessuna marcia': 'kein Gang',
     'pronto': 'bereit',
+    'Tabella agenti': 'Agenten-Tabelle',
     'medio': 'mittel',
     'extra': 'extra',
     'lavoro': 'Arbeit',
@@ -277,6 +280,7 @@ const TR: Record<string, Record<string, string>> = {
     'lavora': 'travaille',
     'nessuna marcia': 'pas de vitesse',
     'pronto': 'prêt',
+    'Tabella agenti': 'Tableau des agents',
     'medio': 'moyen',
     'extra': 'extra',
     'lavoro': 'travail',
@@ -370,6 +374,7 @@ const TR: Record<string, Record<string, string>> = {
     'lavora': 'trabaja',
     'nessuna marcia': 'sin marcha',
     'pronto': 'listo',
+    'Tabella agenti': 'Tabla de agentes',
     'medio': 'medio',
     'extra': 'extra',
     'lavoro': 'trabajo',
@@ -484,11 +489,11 @@ function spiega(ora: Attivo) {
 // Language buttons are flags: real text, so the focus box is exactly the button.
 const BANDIERA: Record<string, string> = { it: '🇮🇹', en: '🇺🇸', de: '🇩🇪', fr: '🇫🇷', es: '🇪🇸' }
 const GUIDA: Record<string, string[]> = {
-  it: ['scala a sinistra: marcia HAIKU, SONNET, HIGH, OPUS, MAX', '▶ lavora · ⏸ agente fermo · ■ a riposo', 'lavoro: cosa fa adesso e da quanto tempo', 'passi, resta: passi fatti della lista e tempo che manca', 'agenti: ▶ lavorano · ⏸ fermi · ✓ finiti · ✗ interrotti', 'tk ag.: token degli agenti · velocità: token al minuto', 'ultracode: compare solo se è acceso', 'Sonnet: modello e token della chat', 'risp.: token di agenti Haiku e Sonnet sul totale', 'Opt.: 0 tutto Opus, 100 tutto Haiku (verde ≥50)', 'live: turno in corso · workflow: dal reset · totale: chat', 'contachilometri: marcia (1-5) e impegno, 5 passi ciascuna', 'marce: HAIKU, SONNET e HIGH Sonnet, OPUS Opus, MAX picco', '↑ salita, ↓ scesa: marcia rispetto all\'agente prima'],
-  en: ['left scale: gear HAIKU, SONNET, HIGH, OPUS, MAX', '▶ working · ⏸ agent stopped · ■ idle', 'work: what it does now and for how long', 'steps, left: steps done of the list and time to go', 'agents: ▶ working · ⏸ stopped · ✓ done · ✗ interrupted', 'tk ag.: agent tokens · speed: tokens per minute', 'ultracode: shown only when it is on', 'Sonnet: the chat model and its tokens', 'sav.: tokens by Haiku and Sonnet agents over the total', 'Opt.: 0 all Opus, 100 all Haiku (green ≥50)', 'live: current turn · workflow: since reset · total: chat', 'speedometer: gear (1-5) and effort, 5 steps each', 'gears: HAIKU, SONNET and HIGH Sonnet, OPUS Opus, MAX peak', '↑ up, ↓ down: gear compared with the previous agent'],
-  de: ['Skala links: Gang HAIKU, SONNET, HIGH, OPUS, MAX', '▶ arbeitet · ⏸ Agent gestoppt · ■ Ruhe', 'Arbeit: was jetzt läuft und seit wann', 'Schritte, Rest: erledigte Schritte und verbleibende Zeit', 'Agenten: ▶ arbeiten · ⏸ gestoppt · ✓ fertig · ✗ abgebrochen', 'tk ag.: Token der Agenten · Tempo: Token pro Minute', 'ultracode: nur sichtbar, wenn aktiv', 'Sonnet: Modell des Chats und seine Token', 'Ersp.: Token von Haiku- und Sonnet-Agenten am Gesamten', 'Opt.: 0 alles Opus, 100 alles Haiku (grün ≥50)', 'live: aktueller Durchgang · Workflow: seit Reset · gesamt: Chat', 'Tacho: Gang (1-5) und Aufwand, je 5 Stufen', 'Gänge: HAIKU, SONNET und HIGH Sonnet, OPUS Opus, MAX Spitze', '↑ hoch, ↓ runter: Gang im Vergleich zum vorigen Agenten'],
-  fr: ['échelle à gauche : vitesse HAIKU, SONNET, HIGH, OPUS, MAX', '▶ travaille · ⏸ agent arrêté · ■ repos', 'travail : ce qu\'il fait et depuis quand', 'étapes, reste : étapes faites de la liste et temps restant', 'agents : ▶ au travail · ⏸ arrêtés · ✓ finis · ✗ interrompus', 'tk ag. : tokens des agents · vitesse : tokens par minute', 'ultracode : visible seulement s\'il est actif', 'Sonnet : modèle du chat et ses tokens', 'écon. : tokens des agents Haiku et Sonnet sur le total', 'Opt. : 0 tout Opus, 100 tout Haiku (vert ≥50)', 'live : tour en cours · workflow : depuis le reset · total : chat', 'compteur : vitesse (1-5) et effort, 5 crans chacune', 'vitesses : HAIKU, SONNET et HIGH Sonnet, OPUS Opus, MAX pic', '↑ montée, ↓ descente : vitesse par rapport à l\'agent précédent'],
-  es: ['escala a la izquierda: marcha HAIKU, SONNET, HIGH, OPUS, MAX', '▶ trabaja · ⏸ agente parado · ■ reposo', 'trabajo: qué hace ahora y desde cuándo', 'pasos, resta: pasos hechos de la lista y tiempo que falta', 'agentes: ▶ trabajan · ⏸ parados · ✓ acabados · ✗ interrumpidos', 'tk ag.: tokens de los agentes · velocidad: tokens por minuto', 'ultracode: solo se ve si está activo', 'Sonnet: modelo del chat y sus tokens', 'ahor.: tokens de agentes Haiku y Sonnet sobre el total', 'Opt.: 0 todo Opus, 100 todo Haiku (verde ≥50)', 'live: turno en curso · workflow: desde el reset · total: chat', 'velocímetro: marcha (1-5) y esfuerzo, 5 pasos cada una', 'marchas: HAIKU, SONNET y HIGH Sonnet, OPUS Opus, MAX pico', '↑ sube, ↓ baja: marcha respecto al agente anterior'],
+  it: ['BARRA', 'scala a sinistra e tachimetro: marcia 1 HAIKU, 2 SONNET, 3 HIGH, 4 OPUS, 5 MAX', '▶ lavora · ⏸ agente fermo · ■ a riposo', 'lavoro: cosa fa adesso e da quanto tempo', 'passi, resta: passi fatti della lista e tempo che manca', 'agenti: ▶ lavorano · ⏸ fermi · ✓ finiti · ✗ interrotti', 'tk ag.: token degli agenti · velocità: token al minuto', 'ultracode: compare solo se è acceso', 'Sonnet: modello e token della chat', 'risp.: token di agenti Haiku e Sonnet sul totale', 'Opt.: 0 tutto Opus, 100 tutto Haiku (verde ≥50)', 'PANNELLO', 'live: turno in corso · workflow: dal reset · totale: chat', 'tachimetro: ago su marcia ed effort (5 tacche per marcia)', 'tabella agenti: agenti e token di ogni marcia (non la chat)', 'bandiere: lingua del pannello', '↗ apre la pagina nel browser: 3 viste, si aggiorna ogni 5 s', 'la tabella agenti ha numero, durata e orario di ognuno'],
+  en: ['BAR', 'left scale and speedometer: gear 1 HAIKU, 2 SONNET, 3 HIGH, 4 OPUS, 5 MAX', '▶ working · ⏸ agent stopped · ■ idle', 'work: what it does now and for how long', 'steps, left: steps done of the list and time to go', 'agents: ▶ working · ⏸ stopped · ✓ done · ✗ interrupted', 'ag. tk: agent tokens · speed: tokens per minute', 'ultracode: shown only when it is on', 'Sonnet: the chat model and its tokens', 'sav.: tokens by Haiku and Sonnet agents over the total', 'Opt.: 0 all Opus, 100 all Haiku (green ≥50)', 'PANEL', 'live: current turn · workflow: since reset · total: chat', 'speedometer: needle on gear and effort (5 steps per gear)', 'agents table: agents and tokens of each gear (not the chat)', 'flags: language of the panel', '↗ opens the page in the browser: 3 views, updates every 5 s', 'the agents table has number, duration and time of each'],
+  de: ['LEISTE', 'Skala links und Tacho: Gang 1 HAIKU, 2 SONNET, 3 HIGH, 4 OPUS, 5 MAX', '▶ arbeitet · ⏸ Agent gestoppt · ■ Ruhe', 'Arbeit: was jetzt läuft und seit wann', 'Schritte, Rest: erledigte Schritte und verbleibende Zeit', 'Agenten: ▶ arbeiten · ⏸ gestoppt · ✓ fertig · ✗ abgebrochen', 'Ag.-Tk: Token der Agenten · Tempo: Token pro Minute', 'ultracode: nur sichtbar, wenn aktiv', 'Sonnet: Modell des Chats und seine Token', 'Ersp.: Token von Haiku- und Sonnet-Agenten am Gesamten', 'Opt.: 0 alles Opus, 100 alles Haiku (grün ≥50)', 'PANEL', 'live: aktueller Durchgang · Workflow: seit Reset · gesamt: Chat', 'Tacho: Nadel auf Gang und Aufwand (5 Stufen je Gang)', 'Agenten-Tabelle: Agenten und Token jedes Gangs (nicht der Chat)', 'Flaggen: Sprache des Panels', '↗ öffnet die Seite im Browser: 3 Ansichten, Update alle 5 s', 'die Agententabelle zeigt Nummer, Dauer und Uhrzeit'],
+  fr: ['BARRE', 'échelle à gauche et compteur : vitesse 1 HAIKU, 2 SONNET, 3 HIGH, 4 OPUS, 5 MAX', '▶ travaille · ⏸ agent arrêté · ■ repos', 'travail : ce qu\'il fait et depuis quand', 'étapes, reste : étapes faites de la liste et temps restant', 'agents : ▶ au travail · ⏸ arrêtés · ✓ finis · ✗ interrompus', 'tk ag. : tokens des agents · vitesse : tokens par minute', 'ultracode : visible seulement s\'il est actif', 'Sonnet : modèle du chat et ses tokens', 'écon. : tokens des agents Haiku et Sonnet sur le total', 'Opt. : 0 tout Opus, 100 tout Haiku (vert ≥50)', 'PANNEAU', 'live : tour en cours · workflow : depuis le reset · total : chat', 'compteur : aiguille sur vitesse et effort (5 crans par vitesse)', 'tableau des agents : agents et tokens de chaque vitesse (pas le chat)', 'drapeaux : langue du panneau', '↗ ouvre la page dans le navigateur : 3 vues, mise à jour toutes les 5 s', 'le tableau des agents a numéro, durée et heure'],
+  es: ['BARRA', 'escala a la izquierda y velocímetro: marcha 1 HAIKU, 2 SONNET, 3 HIGH, 4 OPUS, 5 MAX', '▶ trabaja · ⏸ agente parado · ■ reposo', 'trabajo: qué hace ahora y desde cuándo', 'pasos, resta: pasos hechos de la lista y tiempo que falta', 'agentes: ▶ trabajan · ⏸ parados · ✓ acabados · ✗ interrumpidos', 'tk ag.: tokens de los agentes · velocidad: tokens por minuto', 'ultracode: solo se ve si está activo', 'Sonnet: modelo del chat y sus tokens', 'ahor.: tokens de agentes Haiku y Sonnet sobre el total', 'Opt.: 0 todo Opus, 100 todo Haiku (verde ≥50)', 'PANEL', 'live: turno en curso · workflow: desde el reset · total: chat', 'velocímetro: aguja sobre marcha y esfuerzo (5 pasos por marcha)', 'tabla de agentes: agentes y tokens de cada marcha (no el chat)', 'banderas: idioma del panel', '↗ abre la página en el navegador: 3 vistas, se actualiza cada 5 s', 'la tabla de agentes tiene número, duración y hora'],
 }
 
 // Ignition: true in the first second of a turn; the drawings then play their start-up animations once.
@@ -730,7 +735,7 @@ function svgGriglia(pl: Record<string, [number, number]>, tinta: boolean, attual
       + `<text x="208" y="${y}" class="mu" text-anchor="end">${n}</text>`
       + `<text x="288" y="${y}"${n ? '' : ' class="mu"'} text-anchor="end">${kt(tk)}</text>`
   })
-  const testa = `<text x="0" y="10" class="sm">Gear / ${tr('Marce')}</text><text x="82" y="24" class="mu sm">${tr('modello')}</text><text x="130" y="24" class="mu sm">${tr('effort')}</text><text x="208" y="24" class="mu sm" text-anchor="end">${tr('agenti')}</text><text x="288" y="24" class="mu sm" text-anchor="end">${tr('token')}</text>`
+  const testa = `<text x="0" y="10" class="sm">${tr('Tabella agenti')}</text><text x="82" y="24" class="mu sm">${tr('modello')}</text><text x="130" y="24" class="mu sm">${tr('effort')}</text><text x="208" y="24" class="mu sm" text-anchor="end">${tr('agenti')}</text><text x="288" y="24" class="mu sm" text-anchor="end">${tr('token')}</text>`
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="292" height="114" viewBox="0 0 292 114">${STILE}${testa}${righe.join('')}</svg>`, width: 292 }
 }
 
@@ -744,8 +749,13 @@ async function apriPannello($: EngineInterface) {
   const sid = await $.session.id()
   const file = `${await home($)}/.config/onmake-gear/pannello-${String(sid).replace(/[^A-Za-z0-9]/g, '').slice(0, 12)}.html`
   const script = `${$.plugin.root}/scripts/pannello.py`
-  const r = await $.process.run(['python3', script, '--cartella', await $.session.cwd(), '--sessione', sid, '--html', file, '--lingua', (await read($, lingua).catch(() => 'it')) || 'it'])
+  const cwd = await $.session.cwd(), lg = (await read($, lingua).catch(() => 'it')) || 'it', rs = (await read($, reset).catch(() => '')) || ''
+  const args = ['--cartella', cwd, '--sessione', sid, '--html', file, '--lingua', lg, ...(rs ? ['--reset', rs] : [])]
+  const r = await $.process.run(['python3', script, ...args])
   if (r.exitCode !== 0) return false
+  // The page keeps itself up to date: a small background loop rewrites the three views every 5 s while the session is active (one per session).
+  const q = (x: string) => `'${x.replace(/'/g, `'\\''`)}'`
+  await $.process.run(['sh', '-c', `nohup python3 ${q(script)} ${args.map(q).join(' ')} --segui >/dev/null 2>&1 &`]).catch(() => undefined)
   const windows = (await $.env.get('OS')) === 'Windows_NT'
   const mac = !windows && (await $.process.run(['uname'])).stdout.trim() === 'Darwin'
   await $.process.run(windows ? ['cmd', '/c', 'start', '', file] : [mac ? 'open' : 'xdg-open', file])
@@ -1028,7 +1038,7 @@ export const register: Register = (on, options) => {
 
     const v = await read($, vista).catch(() => 'tot')
     const rs = await read($, reset).catch(() => '')
-    const scritta = (s: string) => <Box flexDirection="column">{s.split('\n').map((x, i) => { const g = svgScritta(x, undefined, 300); return <Svg key={String(i)} source={g.source} alt={x} width={g.width} height={18} /> })}</Box>
+    const scritta = (s: string, larg = 300) => <Box flexDirection="column">{s.split('\n').map((x, i) => { const g = svgScritta(x, undefined, larg); return <Svg key={String(i)} source={g.source} alt={x} width={g.width} height={18} /> })}</Box>
     // Facts of the current job (since your last message): time active, tokens split chat/agents, steps.
     const tokAg = d.righe.reduce((a, r) => a + (r.tok || 0), 0)
     const oraJ = await $.clock.now().catch(() => 0)
@@ -1136,8 +1146,8 @@ export const register: Register = (on, options) => {
         {desk ? (() => { const sMin = lav0 ? (oraJ - inizio) / 60000 : 0; const c = svgCruscotto(livAdesso(d), d.dir, tinta, Boolean((e.props as { isWorking?: boolean }).isWorking) || d.lavorano > 0, p0?.effort ?? '', sMin > 0.05 ? Math.round(car / sMin) : 0); return <Box flexShrink={0}><Svg source={c.source} alt="contachilometri: marcia e impegno" width={c.width} height={90} /></Box> })() : null}
         {desk ? (() => { const g = svgGriglia(d.perliv ?? {}, tinta, livAdesso(d)); return <Box flexShrink={0}><Svg source={g.source} alt="marce: agenti e token" width={g.width} height={114} /></Box> })() : null}
         </Box>
-        {apriG ? <Box flexDirection="column"><Box flexDirection="row" gap={2}>{Object.keys(GUIDA).map(k => <Button key={'lg' + k} plain onPress={() => update($, lingua, () => k)}><Text>{k === lg ? '[' : ' '}{BANDIERA[k] ?? k.toUpperCase()}{k === lg ? ']' : ' '}</Text></Button>)}</Box>{(GUIDA[lg] ?? GUIDA.it).map((x, i) => <Box key={'g' + i}>{desk ? scritta(x) : <Text dimColor>{x}</Text>}</Box>)}</Box> : null}
-        {desk ? <Box flexDirection="row" justifyContent="flex-end" alignItems="center" gap={2}>{piccolo('guida', tr(apriG ? '× guida' : '? guida'), () => update($, guida, g => !g))}<Svg source={`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="16" viewBox="0 0 80 16">${STILE}<text x="80" y="12" class="sm mu" text-anchor="end">Gear ${VERSIONE}</text></svg>`} alt={`Gear ${VERSIONE}`} width={80} height={16} /></Box> : <Text dimColor>Gear {VERSIONE}</Text>}
+        {apriG ? <Box flexDirection="column"><Box flexDirection="row" gap={2}>{Object.keys(GUIDA).map(k => <Button key={'lg' + k} plain onPress={() => update($, lingua, () => k)}><Text>{k === lg ? '[' : ' '}{BANDIERA[k] ?? k.toUpperCase()}{k === lg ? ']' : ' '}</Text></Button>)}</Box>{(GUIDA[lg] ?? GUIDA.it).map((x, i) => <Box key={'g' + i}>{desk ? scritta(x, 560) : <Text dimColor>{x}</Text>}</Box>)}</Box> : null}
+        {desk ? <Box flexDirection="row" justifyContent="flex-end" alignItems="center" gap={2}>{piccolo('guida', tr(apriG ? '× guida' : '? guida'), () => update($, guida, g => !g))}<Svg source={`<svg xmlns="http://www.w3.org/2000/svg" width="150" height="16" viewBox="0 0 150 16">${STILE}<text x="150" y="12" class="sm mu" text-anchor="end">Gear ${VERSIONE} · ${DATA}</text></svg>`} alt={`Gear ${VERSIONE}`} width={150} height={16} /></Box> : <Text dimColor>Gear {VERSIONE}</Text>}
       </Box>,
     )
   })

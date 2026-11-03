@@ -203,6 +203,19 @@ def riepilogo(sess):
                 perc=perc, el=el, eta=eta, livello=(gear[-1]["liv"] if gear else None), dir=(gear[-1]["dir"] if gear else ""),
                 attivi=attivi, fermi=fermi, ora=ora)
 
+def infoapp(sess):
+    """Effort e Ultracode di questa sessione, dal file di sessione dell'app."""
+    sid = os.path.basename(sess).replace(".jsonl", "")
+    for f in glob.glob(os.path.expanduser("~/Library/Application Support/Claude/claude-code-sessions/*/*/local_*.json")):
+        try:
+            d = json.load(open(f))
+        except Exception:
+            continue
+        if d.get("cliSessionId") == sid:
+            return d.get("effort") or "", (d.get("sessionSettings") or {}).get("ultracode") is True
+    return "", False
+
+
 def ultracode(sess):
     """True se l'app ha acceso Ultracode per questa sessione (campo sessionSettings.ultracode del file di sessione dell'app)."""
     sid = os.path.basename(sess).replace(".jsonl", "")
@@ -219,7 +232,7 @@ def ultracode(sess):
 def breve(r):
     """Per la barra: solo il lavoro attuale, cioe' dal tuo ultimo messaggio (la sessione intera resta nel pannello)."""
     m, u = r["main"], r["main"]["ultimo"]
-    ag = r["ag"] if TUTTO else [x for x in r["ag"] if u is None or (x["b"] and x["b"] >= u)]
+    ag = r["ag"]  # la vista (live, workflow, totale) e' gia' applicata dal filtro DA
     todos = m["todos"] if m["todos"] and m["todo_t"] and u and m["todo_t"] >= u else None
     tot = len(todos) if todos else 0
     fatti = sum(1 for t in (todos or []) if t.get("status") == "completed")
@@ -250,6 +263,10 @@ def breve(r):
                 righe=[dict(liv=x["liv"], nome=x["nome"], tipo=x["tipo"], dir=x["dir"], model=x["model"], tok=x["v"][0] + x["v"][1] + x["v"][2], fine=x["fine"],
                             stato=x["stato"], ago=int(x["ago"] or 0), desc=x["desc"][:36]) for x in vis])
 
+NOMI = {"light": "HAIKU", "medium": "SONNET"}  # nome mostrato delle marce
+nm = lambda k: NOMI.get(k, k.upper() if k in ("high", "opus", "max") else k)
+VISTA = "live"  # vista della pagina che si sta scrivendo
+BASE = ""  # percorso della pagina live, le altre viste hanno -wf e -tot
 STATI = [("lavora", "st_lavora", "▶"), ("fermo", "st_fermo", "⏸"), ("completato", "st_completato", "✓"), ("interrotto", "st_interrotto", "✗")]
 
 LANGS = ["it", "en", "de", "fr", "es"]
@@ -290,9 +307,18 @@ TR = {  # testo visibile: (it, en, de, fr, es)
     "costostim": ("Costo stimato", "Estimated cost", "Geschätzte Kosten", "Coût estimé", "Coste estimado"),
     "avanz": ("Avanzamento", "Progress", "Fortschritt", "Avancement", "Avance"),
     "agenti2": ("Agenti", "Agents", "Agenten", "Agents", "Agentes"),
-    "th": (("Agente", "Modello", "Stato", "Strumenti", "Token", "Durata", "Compito"), ("Agent", "Model", "Status", "Tools", "Tokens", "Duration", "Task"),
-           ("Agent", "Modell", "Status", "Werkzeuge", "Tokens", "Dauer", "Aufgabe"), ("Agent", "Modèle", "Statut", "Outils", "Tokens", "Durée", "Tâche"),
-           ("Agente", "Modelo", "Estado", "Herramientas", "Tokens", "Duración", "Tarea")),
+    "th": (("#", "Agente", "Modello", "Stato", "Strumenti", "Token", "Durata", "Orario", "Compito"), ("#", "Agent", "Model", "Status", "Tools", "Tokens", "Duration", "Time", "Task"),
+           ("#", "Agent", "Modell", "Status", "Werkzeuge", "Tokens", "Dauer", "Uhrzeit", "Aufgabe"), ("#", "Agent", "Modèle", "Statut", "Outils", "Tokens", "Durée", "Heure", "Tâche"),
+           ("#", "Agente", "Modelo", "Estado", "Herramientas", "Tokens", "Duración", "Hora", "Tarea")),
+    "effort": ("effort", "effort", "Aufwand", "effort", "esfuerzo"),
+    "tabag": ("Tabella agenti", "Agents table", "Agenten-Tabelle", "Tableau des agents", "Tabla de agentes"),
+    "marce": ("Marce", "Levels", "Gänge", "Vitesses", "Marchas"),
+    "risp2": ("risp. token agenti bassi", "sav. low-agent tokens", "Ersp. Token niedriger Agenten", "écon. tokens agents bas", "ahor. tokens agentes bajos"),
+    "e_low": ("basso", "low", "niedrig", "bas", "bajo"), "e_medium": ("medio", "medium", "mittel", "moyen", "medio"),
+    "e_high": ("alto", "high", "hoch", "haut", "alto"), "e_xhigh": ("extra", "extra", "extra", "extra", "extra"), "e_max": ("max", "max", "max", "max", "max"),
+    "v_live": ("live", "live", "live", "live", "live"),
+    "v_wf": ("workflow", "workflow", "Workflow", "workflow", "workflow"),
+    "v_tot": ("totale chat", "chat total", "Chat gesamt", "chat total", "chat total"),
     "sess": ("sessione", "session", "Sitzung", "session", "sesión"),
     "agg": ("si aggiorna ogni 5 s · dati locali", "refreshes every 5 s · local data", "aktualisiert alle 5 s · lokale Daten", "se met à jour toutes les 5 s · données locales", "se actualiza cada 5 s · datos locales"),
     "senzaprezzo": (" Senza prezzo noto, esclusi: {m}.", " No known price, excluded: {m}.", " Kein bekannter Preis, ausgenommen: {m}.", " Sans prix connu, exclus : {m}.", " Sin precio conocido, excluidos: {m}."),
@@ -329,16 +355,36 @@ def pagina(r, sess):
     pc = lambda x: T("nd") if x is None else f"{x*100:.0f}%"
     tk = lambda x: sum(x["v"][:3])
     liv = r["livello"]
+    effort, ultra = infoapp(sess)
+    EFN = {"low": T("e_low"), "medium": T("e_medium"), "high": T("e_high"), "xhigh": T("e_xhigh"), "max": T("e_max")}
+    livmod = lambda m: "light" if "haiku" in m else "medium" if "sonnet" in m else "opus" if "opus" in m else None
+    mod0 = r["main"]["model"] or ""
+    ora = livmod(next((x["model"] for x in r["ag"] if x["stato"] == "lavora"), "")) or livmod(mod0) or liv
+    bj = breve(r)
+    W = {"light": 1, "medium": 2, "high": 3, "opus": 5, "max": 5}
+    pl_ = bj["perliv"]
+    totk = bj["stok"] or bj["tok"]
+    agk = sum(v[1] for v in pl_.values())
+    pesoc = 1 if "haiku" in mod0 else 2 if "sonnet" in mod0 else 5
+    io = None if not totk else max(0, min(100, round((1 - (sum(pl_[k][1] * W[k] for k in pl_) + max(0, totk - agk) * pesoc) / (totk * 5)) / 0.8 * 100)))
+    bassi = sum(pl_[k][1] for k in ("light", "medium", "high"))
+    rsp = round(bassi / bj["stok"] * 100) if bj["stok"] else 0
     n = {k: sum(1 for x in ag if x["stato"] == k) for k, _, _ in STATI}
     # KPI
-    marcia = (f'<b><i class="dot" style="background:{COL[liv]}"></i>{liv.upper()} {r["dir"]}</b>' if liv else f'<b>{T("nessuna")}</b>')
+    marcia = (f'<b><i class="dot" style="background:{COL[ora]}"></i>{LIV.index(ora) + 1} {nm(ora)} {r["dir"]}</b>' if ora else f'<b>{T("nessuna")}</b>')
+    marcia += f'<small>{T("effort")}: {EFN.get(effort, effort or "–")}{" · ultracode" if ultra else ""}</small>'
     conti = " ".join(f'<span class="s-{k}">{ic} {n[k]}</span>' for k, _, ic in STATI if n[k] or k != "interrotto")
     tempo = dur(r["el"]) + (f' <small>/ ~{dur(r["el"] + r["eta"])}</small>' if r["eta"] else "")
     rb = max(0.0, min(1.0, r["risp"] or 0))
     risp = (f'<b>{"" if round(r["risp"]*100) == 0 else ("−" if r["risp"] > 0 else "+")}{abs(r["risp"])*100:.0f}%</b><div class="mini"><i style="width:{rb*100:.0f}%"></i></div>' if r["risp"] is not None else "<b>{T('nd')}</b>")
-    kpi = (f'<div class="k"><div>{marcia}<span>{T("marcia")}</span></div><div><b class="cn">{conti}</b><span>{T("agenti")}</span></div>'
+    nomef = os.path.basename(BASE) or "pannello.html"
+    vie = [("live", T("v_live"), nomef), ("wf", T("v_wf"), nomef[:-5] + "-wf.html"), ("tot", T("v_tot"), nomef[:-5] + "-tot.html")]
+    nav = '<nav class="vt">' + "".join(f'<a href="{f}"{" class=on" if v == VISTA else ""}>{"●" if v == VISTA else "○"} {t}</a>' for v, t, f in vie) + "</nav>"
+    kpi = (nav + f'<div class="k"><div>{marcia}<span>{T("marcia")}</span></div><div><b class="cn">{conti}</b><span>{T("agenti")}</span></div>'
            f'<div><b>{tempo}</b><span>{T("tempo")}{T("stimato") if r["eta"] else ""}</span></div><div><b>{kt(r["tok"])}</b><span>{T("tokusati")}</span></div>'
-           f'<div><b>${r["reale"]:.2f}</b><span>{T("costo")}</span></div><div>{risp}<span>{T("rispvs")}</span></div></div>')
+           f'<div><b>${r["reale"]:.2f}</b><span>{T("costo")}</span></div><div>{risp}<span>{T("rispvs")}</span></div>'
+           f'<div><b>{"–" if io is None else io}</b><div class="mini"><i style="width:{io or 0}%"></i></div><span>Opt. (0-100)</span></div>'
+           f'<div><b>{rsp}%</b><div class="mini"><i style="width:{rsp}%"></i></div><span>{T("risp2")}</span></div></div>')
     # avanzamento
     todo = "".join(f'<li class="{esc(t.get("status","pending"))}">{"✓" if t.get("status")=="completed" else ("◔" if t.get("status")=="in_progress" else "○")} {esc(str(t.get("content","")))}</li>' for t in r["todos"])
     avanz = (f'<div class="pr"><b>{pc(r["perc"])}</b><span>{T("passi", f=r["fatti"], t=r["tot"])}</span></div><div class="pb"><i style="width:{r["perc"]*100:.0f}%"></i></div><ul class="td">{todo}</ul>'
@@ -385,10 +431,15 @@ def pagina(r, sess):
     marce = sorted(pl, key=ordine)
     graf = (f'<div class="g2"><section><h2>{T("tokmod")}</h2><h4>{T("tokveri")}</h4>{barre([(m, "var(--ac)", v[0]) for m, v in mod])}'
             f'<h4>{T("cache")}</h4>{barre([(m, "var(--mu2)", v[1]) for m, v in mod])}</section>'
-            f'<section><h2>{T("permarcia")}</h2><h4>{T("token")}</h4>{barre([(k, COL[pl[k][0]], pl[k][1]) for k in marce])}'
-            f'<h4>{T("costostim")}</h4>{barre([(k, COL[pl[k][0]], pl[k][2]) for k in marce], lambda v: f"${v:.2f}")}</section></div>')
-    tab = "".join(f'<tr><td><i class="dot" style="background:{COL[x["liv"]]}"></i>{esc(x["nome"])} {x["dir"]}</td><td>{esc(x["model"])}</td><td class="s-{x["stato"]}">{ETI(x)}</td>'
-                  f'<td>{x["tools"]}</td><td>{kt(tk(x))}</td><td>{dur((x["b"]-x["a"]).total_seconds()) if x["a"] and x["b"] else "?"}</td><td class="ds">{esc(x["desc"])}</td></tr>' for x in ag)
+            f'<section><h2>{T("permarcia")}</h2><h4>{T("token")}</h4>{barre([(nm(k), COL[pl[k][0]], pl[k][1]) for k in marce])}'
+            f'<h4>{T("costostim")}</h4>{barre([(nm(k), COL[pl[k][0]], pl[k][2]) for k in marce], lambda v: f"${v:.2f}")}</section></div>')
+    hm = lambda t: t.astimezone().strftime("%d/%m %H:%M") if t else "?"
+    EFR = {"light": "low", "medium": "low", "high": "high", "opus": "high", "max": "max"}
+    MODN = {"light": "Haiku", "medium": "Sonnet", "high": "Sonnet", "opus": "Opus", "max": "Opus"}
+    tg = "".join(f'<tr{" class=on" if k == ora else ""}><td class="mu">{i}</td><td><i class="dot" style="background:{COL[k]}"></i>{nm(k)}</td><td>{MODN[k]}</td><td>{EFN[EFR[k]]}</td><td>{pl_[k][0]}</td><td>{kt(pl_[k][1])}</td></tr>' for i, k in enumerate(LIV, 1))
+    tabg = f'<section><h2>{T("tabag")}</h2><div class="w"><table><tr><th>#</th><th>Gear</th><th>{T("th")[2]}</th><th>{T("effort")}</th><th>{T("agenti")}</th><th>{T("th")[5]}</th></tr>{tg}</table></div></section>'
+    tab = "".join(f'<tr><td class="mu">{i}</td><td><i class="dot" style="background:{COL[x["liv"]]}"></i>{esc(x["nome"])} {x["dir"]}</td><td>{esc(x["model"])}</td><td class="s-{x["stato"]}">{ETI(x)}</td>'
+                  f'<td>{x["tools"]}</td><td>{kt(tk(x))}</td><td>{dur((x["b"]-x["a"]).total_seconds()) if x["a"] and x["b"] else "?"}</td><td>{hm(x["a"])} → {hm(x["b"])[-5:] if x["b"] else "?"}</td><td class="ds">{esc(x["desc"])}</td></tr>' for i, x in enumerate(ag, 1))
     nota = (T("senzaprezzo", m=esc(", ".join(r["noprezzo"]))) if r["noprezzo"] else "")
     return f"""<!doctype html><html lang="{LINGUA}"><head><meta charset="utf-8"><meta http-equiv="refresh" content="5"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gear Pannello</title><style>
 :root{{--bg:#f6f6f3;--fg:#24242a;--mu:#7a7a80;--mu2:#c4c4cc;--cd:#fff;--ln:#e8e8e2;--ac:#7b9cc4;--ok:#5f9f78;--wa:#c9a04a;--ko:#b97a6e}}
@@ -396,6 +447,7 @@ def pagina(r, sess):
 *{{box-sizing:border-box}} body{{margin:0 auto;max-width:1080px;padding:16px;background:var(--bg);color:var(--fg);font:13px/1.4 system-ui,-apple-system,sans-serif}}
 h1{{font-size:17px;margin:0;font-weight:650}} h2{{font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;font-weight:600}}
 h4{{font-size:11px;color:var(--mu);margin:10px 0 2px;font-weight:500}} .mu{{color:var(--mu)}} .sm{{font-size:11px;margin:6px 0 0}}
+.vt{{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 0}} .vt a{{color:var(--mu);text-decoration:none;border:1px solid var(--ln);background:var(--cd);border-radius:14px;padding:3px 11px;font-size:12px}} .vt a.on{{color:var(--fg);border-color:var(--mu)}} .vt a:hover{{border-color:var(--ac)}}
 .dot{{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;background:var(--c,var(--mu))}}
 .k{{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:12px 0}} .k>div{{background:var(--cd);border:1px solid var(--ln);border-radius:10px;padding:8px 11px}}
 .k b{{font-size:16px;display:block;font-weight:600;white-space:nowrap}} .k small{{color:var(--mu);font-weight:400;font-size:12px}} .k span{{color:var(--mu);font-size:11px}} .cn span{{font-size:15px;color:inherit;margin-right:6px}}
@@ -417,10 +469,10 @@ section{{background:var(--cd);border:1px solid var(--ln);border-radius:10px;padd
 .gt i{{position:absolute;top:0;min-width:3px}} .gt i.interrotto{{opacity:.4}}
 .g2{{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px}} .g2 section{{margin:0}}
 .s-lavora{{color:var(--ok)}} .s-fermo{{color:var(--wa)}} .s-completato{{color:var(--mu)}} .s-interrotto{{color:var(--ko)}}
-table{{border-collapse:collapse;width:100%;font-size:12px}} td,th{{padding:5px 6px;border-bottom:1px solid var(--ln);text-align:left;white-space:nowrap}} th{{color:var(--mu);font-weight:500}} td.ds{{white-space:normal;min-width:160px}} .w{{overflow-x:auto}}
+table{{border-collapse:collapse;width:100%;font-size:12px}} td,th{{padding:5px 6px;border-bottom:1px solid var(--ln);text-align:left;white-space:nowrap}} th{{color:var(--mu);font-weight:500}} tr.on td{{background:color-mix(in srgb,var(--ok) 12%,transparent)}} td.ds{{white-space:normal;min-width:160px}} .w{{overflow-x:auto}}
 @media(max-width:520px){{body{{padding:10px}} .rw{{grid-template-columns:90px 1fr 56px;gap:6px}} .k{{grid-template-columns:1fr 1fr}}}}
 </style></head><body><h1 style="display:flex;align-items:center;gap:8px"><a href="https://www.onmake.it" target="_blank" rel="noopener" title="onmake.it" style="display:inline-flex"><svg width="26" height="27" viewBox="0 0 100 104" role="img" aria-label="ONMAKE"><defs> <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"> <stop offset="0" stop-color="#8fbc7c"/><stop offset="0.45" stop-color="#6aa057"/><stop offset="1" stop-color="#5f9a4e"/> </linearGradient> <linearGradient id="f" x1="0" y1="0" x2="1" y2="1"> <stop offset="0" stop-color="#4a4a48"/><stop offset="1" stop-color="#2f2f2e"/> </linearGradient> </defs> <path d="M50 3 L92.4 27.5 Q94 28.4 94 30.3 L94 73.7 Q94 75.6 92.4 76.5 L50 101 L7.6 76.5 Q6 75.6 6 73.7 L6 30.3 Q6 28.4 7.6 27.5 Z" fill="url(#f)"/> <path d="M50 12.5 L85.5 33 L85.5 71 L50 91.5 L14.5 71 L14.5 33 Z" fill="url(#g)" stroke="#6b6b69" stroke-width="0.8"/> <path d="M14.5 33 L50 12.5 L85.5 33 L85.5 40 Q50 32 14.5 66 Z" fill="#ffffff" opacity="0.12"/> <text x="50" y="58" text-anchor="middle" font-family="Futura, 'Avenir Next', 'Century Gothic', system-ui, sans-serif" font-weight="600" font-size="15.5" textLength="66" lengthAdjust="spacingAndGlyphs" fill="#363634">ONMAKE</text></svg></a>Gear Pannello</h1><span class="mu sm">{T("sess")} {esc(os.path.basename(sess)[:8])} · {datetime.now().strftime('%H:%M:%S')} · {T("agg")}</span>
-{kpi}<section><h2>{T("avanz")}</h2>{avanz}</section><section><h2>Workflow</h2>{flusso}</section>{gant}{graf}
+{kpi}{tabg}<section><h2>{T("avanz")}</h2>{avanz}</section><section><h2>Workflow</h2>{flusso}</section>{gant}{graf}
 <section><h2>{T("agenti2")}</h2><div class="w"><table><tr>{"".join(f"<th>{h}</th>" for h in T("th"))}</tr>{tab}</table></div>
 <p class="mu sm">{T("foot", o=f"{r['opus']:.2f}", c=kt(r['cr']))}{nota}</p></section>
 </body></html>"""
@@ -438,18 +490,60 @@ if __name__ == "__main__":
     p.add_argument("--json", action="store_true")
     p.add_argument("--da")
     p.add_argument("--html")
-    p.add_argument("--tutto", action="store_true")
+    p.add_argument("--tutto", action="store_true")  # vecchio nome, ora ignorato
+    p.add_argument("--vista", choices=("live", "wf", "tot"), default="tot")
+    p.add_argument("--reset")  # ora del reset parziale: serve alla vista workflow della pagina
+    p.add_argument("--segui", action="store_true")  # riscrive la pagina ogni 5 s finche' la sessione e' attiva
     p.add_argument("--lingua", default="it", choices=LANGS)
     a = p.parse_args()
     sess = sessione(a.cartella, a.sessione)
     DA = tempo(a.da) if a.da else None
     TUTTO = a.tutto
+    VISTA = a.vista
     LINGUA = a.lingua
-    r = riepilogo(sess)
     if a.html:
-        os.makedirs(os.path.dirname(a.html), exist_ok=True)
-        open(a.html, "w").write(pagina(r, sess))
+        import time
+
+        def scrivi():
+            """Scrive le tre viste: live (dall'ultimo messaggio), workflow (dal reset), totale chat."""
+            global DA, VISTA, BASE
+            BASE = a.html
+            DA = None
+            r0 = riepilogo(sess)
+            os.makedirs(os.path.dirname(a.html), exist_ok=True)
+            for v, da in (("live", r0["main"]["ultimo"]), ("wf", tempo(a.reset) if a.reset else None), ("tot", None)):
+                DA, VISTA = da, v
+                r1 = r0 if da is None else riepilogo(sess)
+                f = a.html if v == "live" else a.html[:-5] + "-" + v + ".html"
+                open(f, "w").write(pagina(r1, sess))
+            DA = None
+
+        scrivi()
         print("Scritto", a.html)
-    else:
-        print(json.dumps(dict(breve(r), ultra=ultracode(sess)), ensure_ascii=False))
+        if a.segui:
+            pid = a.html[:-5] + ".pid"
+            try:
+                os.kill(int(open(pid).read()), 0)
+                sys.exit(0)  # c'e' gia' un aggiornamento in corso per questa sessione
+            except (OSError, ValueError):
+                pass
+            open(pid, "w").write(str(os.getpid()))
+            while os.path.exists(a.html) and time.time() - os.path.getmtime(sess) < 1800:
+                time.sleep(5)
+                try:
+                    scrivi()
+                except Exception:
+                    pass
+            if os.path.exists(pid):
+                os.remove(pid)
+        sys.exit(0)
+    r = riepilogo(sess)
+    if not a.da:  # la vista decide l'intervallo: live dal tuo ultimo messaggio, workflow dal reset, totale tutta la chat
+        if VISTA == "live" and r["main"]["ultimo"]:
+            DA = r["main"]["ultimo"]
+            r = riepilogo(sess)
+        elif VISTA == "wf" and a.reset:
+            DA = tempo(a.reset)
+            r = riepilogo(sess)
+    print(json.dumps(dict(breve(r), ultra=ultracode(sess)), ensure_ascii=False))
     open(os.path.expanduser("~/.claude/gear-ultimo.txt"), "w").write(" ".join(sys.argv) + "\n" + sess + "\n")
