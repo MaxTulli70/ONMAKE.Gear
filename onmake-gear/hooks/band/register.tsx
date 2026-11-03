@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.211'
+const VERSIONE = '0.6.212'
 const DATA = '03/11/2026' // date of this version, shown next to it
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
@@ -662,18 +662,18 @@ function svgScritta(s: string, col?: string, fisso = 0) {
 
 // Bar of where the session tokens went: main chat and each gear's agents, with the share of each.
 function svgBarra(pl: Record<string, [number, number]>, tot: number, tinta: boolean) {
-  const W = 900
+  const W = 990
   const liv = ['light', 'medium', 'high', 'opus', 'max']
   const ag = liv.reduce((a, k) => a + (pl[k]?.[1] ?? 0), 0)
   const parti: [string, number, string][] = [['chat', Math.max(0, tot - ag), '#c0714f'], ...liv.map(k => [nomeMarcia(k), pl[k]?.[1] ?? 0, COL[k]] as [string, number, string])]
   let x = 0, lx = 0
-  const out: string[] = [`<text x="0" y="14" class="mu" style="font-size:14px">${tr('chi ha usato i token')}</text>`, `<rect x="0" y="22" width="${W}" height="16" rx="3" class="v"/>`]
+  const out: string[] = [`<text x="0" y="14" class="mu" style="font-size:14px">${tr('chi ha usato i token')}</text>`, `<rect x="0" y="24" width="${W}" height="12" rx="3" class="v"/>`]
   // every model with tokens gets at least 4px: the chat gives that space back, its real share stays in the legend
   const piccoli = parti.slice(1).reduce((a, [, n]) => a + (n ? Math.max(4, n / (tot || 1) * W) : 0), 0)
   for (const [i, [nome, n, col]] of parti.entries()) {
     if (!tot || !n) continue
     const w = i === 0 ? Math.max(4, W - piccoli) : Math.max(4, n / tot * W)
-    out.push(`<rect x="${x.toFixed(1)}" y="22" width="${w.toFixed(1)}" height="16" style="fill:${tinta ? col : GRIGIO}"/>`)
+    out.push(`<rect x="${x.toFixed(1)}" y="24" width="${w.toFixed(1)}" height="12" style="fill:${tinta ? col : GRIGIO}"/>`)
     x += w
     const s = `${nome} ${(n / tot * 100).toFixed(1).replace('.', ',')}% · ${n >= 1e6 ? (n / 1e6).toFixed(1).replace('.', ',') + 'M' : kt(n)}`
     out.push(`<rect x="${lx}" y="47" width="11" height="11" rx="2" style="fill:${tinta ? col : GRIGIO}"/><text x="${lx + 16}" y="57" class="mu" style="font-size:14px">${s}</text>`)
