@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.195'
+const VERSIONE = '0.6.196'
 const DATA = '03/11/2026' // date of this version, shown next to it
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
@@ -707,9 +707,10 @@ function svgCruscotto(livello: string | null, dir: string, tinta: boolean, lavor
   }
   // needle = gear and effort together: each gear has 5 steps (low, medium, high, xhigh, max)
   const ei = Math.max(0, ['low', 'medium', 'high', 'xhigh', 'max'].indexOf(impegno))
-  // inside the gear's sector the needle follows the load: the real speed (15k token/min = end of the sector), never below the effort step
-  const p = Math.max((ei + 0.5) / 5, Math.min(1, vel / 15000))
-  const f = k >= 0 ? (k + 0.06 + 0.88 * p) / 5 : 0, a = ang(f)
+  // inside the gear's sector the needle follows the load (tokens per minute) on a smooth curve: 0 = start of the sector, then it rises
+  // without ever jumping to the end (5k/min about a quarter, 15k about two thirds, 60k almost the end); idle it rests just inside the sector
+  const p = 0.04 + 0.92 * (1 - Math.exp(-Math.max(0, vel) / 15000))
+  const f = k >= 0 ? (k + p) / 5 : 0, a = ang(f)
   const [nx, ny] = pt(a, R - 10), [bx, by] = pt(a + Math.PI, 8)
   // ignition: the needle sweeps to the end of the scale and comes back to its place (rotation in screen degrees)
   const gf = 210 - 240 * f
