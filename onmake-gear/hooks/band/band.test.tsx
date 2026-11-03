@@ -31,13 +31,13 @@ test('desktop: the bar is an Svg with the level and the share', async ($, on) =>
   seed(on)
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
   const svg = await ui.find({ type: 'Svg' })
-  expect((svg?.props as { source?: string })?.source).toContain('MEDIUM')
-  expect((svg?.props as { source?: string })?.source).toContain('40%')
+  expect((svg?.props as { source?: string })?.source).toContain('SONNET') // the MEDIUM gear is shown as SONNET
+  expect((svg?.props as { source?: string })?.source).toContain('lavoro 10m') // work and time sit in the left block; steps (2/5) and shares are in the right block
   expect((svg?.props as { source?: string })?.source).not.toContain('Opus 5.5')
   expect(await ui.find({ key: 'onmake' })).toBeTruthy()
   expect(await ui.find({ key: 'tendina' })).toBeTruthy()
   expect(await ui.find({ key: 'pannello' })).toBeTruthy()
-  expect(JSON.stringify(await ui.find({ type: 'Box' }))).toContain('job')
+  expect(JSON.stringify(await ui.find({ type: 'Box' }))).not.toContain('job') // on desktop the single agent lines are no longer drawn: they are in the browser page
   await ui.unmount()
 })
 
@@ -45,7 +45,7 @@ test('terminal: the bar is Text, no Svg', async ($, on) => {
   seed(on)
   const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
   expect(await ui.find({ type: 'Svg' })).toBeFalsy()
-  expect(await ui.find({ type: 'Text', text: /MEDIUM/ })).toBeTruthy()
+  expect(await ui.find({ type: 'Text', text: /SONNET/ })).toBeTruthy()
   await ui.unmount()
 })
 
@@ -70,8 +70,8 @@ test('desktop: the language chosen in the guide changes the whole bar', async ($
   }))
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
   const svg = await ui.find({ type: 'Svg' })
-  expect((svg?.props as { source?: string })?.source).toContain('thinking…')
-  expect((svg?.props as { source?: string })?.source).not.toContain('pensa…')
+  expect((svg?.props as { source?: string })?.source).toContain('work') // the labels follow the chosen language
+  expect((svg?.props as { source?: string })?.source).not.toContain('lavoro')
   await ui.unmount()
 })
 

@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.193'
+const VERSIONE = '0.6.195'
 const DATA = '03/11/2026' // date of this version, shown next to it
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
@@ -555,7 +555,7 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
   cella(38, tr('passi'), d.perc !== null ? `${d.fatti}/${d.tot}` : '–', COL.medium, d.perc ?? 0)
   cella(42, tr('resta'), d.eta !== null ? `~${dur(d.eta)}` : '–', COL.high, d.eta !== null ? d.el / (d.el + d.eta) : 0)
   cella(76, tr('agenti'), '', undefined, undefined, ag)
-  cella(38, tr('tk ag.'), tokAg > 0 ? ktc(tokAg) : '–')
+  cella(38, tr('tk ag.'), tokAg > 0 ? (tokAg >= 1e4 && tokAg < 1e6 ? `${Math.round(tokAg / 1000)}k` : ktc(tokAg)) : '–')
   cella(70, tr('velocità'), vel)
   sp(4)
   }
@@ -707,7 +707,9 @@ function svgCruscotto(livello: string | null, dir: string, tinta: boolean, lavor
   }
   // needle = gear and effort together: each gear has 5 steps (low, medium, high, xhigh, max)
   const ei = Math.max(0, ['low', 'medium', 'high', 'xhigh', 'max'].indexOf(impegno))
-  const f = k >= 0 ? (k * 5 + ei + 0.5) / 25 : 0, a = ang(f)
+  // inside the gear's sector the needle follows the load: the real speed (15k token/min = end of the sector), never below the effort step
+  const p = Math.max((ei + 0.5) / 5, Math.min(1, vel / 15000))
+  const f = k >= 0 ? (k + 0.06 + 0.88 * p) / 5 : 0, a = ang(f)
   const [nx, ny] = pt(a, R - 10), [bx, by] = pt(a + Math.PI, 8)
   // ignition: the needle sweeps to the end of the scale and comes back to its place (rotation in screen degrees)
   const gf = 210 - 240 * f
@@ -1125,7 +1127,8 @@ export const register: Register = (on, options) => {
         {testa}
         {sel}
         {r2 ? (desk ? scritta(r2) : <Text dimColor>{r2}</Text>) : null}
-        {d.righe.map((x, i) => {
+        {/* desktop: one agent per row is in the browser page (↗); here the table and the lines below are enough, the same in every chat */}
+        {(desk ? [] : d.righe).map((x, i) => {
           if (!desk) return (
             <Text key={String(i)} wrap="truncate-end" dimColor={x.stato === 'completato'}>
               <Text color={x.stato === 'fermo' ? c('high') : c(x.liv, tinta ? GRIGIO : undefined)}>{icona[x.stato] ?? '·'} {x.nome}{x.dir === '▲' || x.dir === '▼' ? ' ' + x.dir : ''}</Text>
