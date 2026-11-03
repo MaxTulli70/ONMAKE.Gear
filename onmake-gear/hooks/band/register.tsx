@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.104'
+const VERSIONE = '0.6.105'
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
 // Model and effort of the main chat's last model request, as the engine sends it.
@@ -841,12 +841,12 @@ export const register: Register = (on, options) => {
     const desk = e.surface === 'desktop'
     const { Svg } = $.ui.resolve(e) as unknown as { Svg: (p: { source: string; alt: string; width?: number; height?: number; isInteractive?: boolean }) => JSX.Element }
     // Small button on desktop: the word drawn like the bar, a transparent button laid over it (as on the logo).
-    const tastino = (k: string, s: string, fn: () => unknown, col?: string) => {
+    const tastino = (k: string, s: string, fn: () => unknown, col?: string, alt = 24) => {
       if (!desk) return tasto(k, s, fn, col)
       const g = svgScritta(s, col, s.length === 1 ? 14 : 0)
       return (
         <Box key={k} position="relative">
-          <Svg source={g.source} alt={s} width={g.width} height={24} />
+          <Svg source={g.source} alt={s} width={g.width} height={alt} />
           <Box position="absolute" top={0} left={0} right={0} bottom={0} justifyContent="center" alignItems="center" overflow="hidden">
             <Button key={k} plain onPress={fn}><Text>{'\u2002'}</Text></Button>
           </Box>
@@ -866,8 +866,10 @@ export const register: Register = (on, options) => {
           </Box>
         </Box>
         <Box flexShrink={0} flexDirection="row" gap={0} alignItems="center">
-          {tastino('tendina', open ? '↓' : '↑', () => apriChiudi($))}
-          {tastino('pannello', '↗', () => apriPannello($).catch(() => $.ui.toast(tr('Gear: pannello non aperto'))))}
+          <Box flexDirection="column" alignItems="center">
+          {tastino('tendina', open ? '↓' : '↑', () => apriChiudi($), undefined, 14)}
+          {tastino('pannello', '↗', () => apriPannello($).catch(() => $.ui.toast(tr('Gear: pannello non aperto'))), undefined, 14)}
+          </Box>
           {/* A button takes only text and the app does not follow a link inside an SVG, so a transparent button lies over the logo and opens the site. */}
           <Box position="relative">
             <Svg source={LOGO} alt="ONMAKE" width={32} height={34} />
