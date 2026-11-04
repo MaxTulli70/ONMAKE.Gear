@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.217'
+const VERSIONE = '0.6.218'
 const DATA = '03/11/2026' // date of this version, shown next to it
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
@@ -985,7 +985,7 @@ export const register: Register = (on, options) => {
             <Svg source={riga1.source} alt={riga(d, compact)} width={riga1.width} height={26} />
           </Box>
         </Box>
-        <Box flexShrink={0} flexDirection="row" gap={1} alignItems="center">
+        <Box flexShrink={0} flexDirection="row" gap={0} alignItems="center">
           {grp1.width > 4 ? <Box flexShrink={0}><Svg source={grp1.source} alt="modello e token" width={grp1.width} height={26} /></Box> : null}
           <Box flexDirection="column" alignItems="center">
           {tastino('tendina', open ? '↓' : '↑', () => apriChiudi($), undefined, 18)}
