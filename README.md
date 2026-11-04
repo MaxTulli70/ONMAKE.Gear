@@ -62,3 +62,5 @@ Panel: `python3 onmake-gear/scripts/pannello.py --cartella DIR [--sessione ID] [
 
 ## Other AIs / Altre AI
 For opencode, DeepSeek Harness (dsh), Codex, Gemini, Cursor: `sh portabile/installa-altre-ai.sh` adds a compact rule block (`portabile/GEAR-corto.md`) to their existing instruction files, backup `*.prima-gear`, safe to re-run. Remove with `sh portabile/installa-altre-ai.sh --togli`.
+
+Codex has its own version, `portabile/GEAR-codex.md`: GPT-6.1 Terra for LIGHT and MEDIUM, GPT-6.1 Sol for HIGH, OPUS and MAX, with the Codex reasoning efforts (Light, medio, alto, molto alto, max; never ultra). Paste it in `~/.codex/AGENTS.md`.
