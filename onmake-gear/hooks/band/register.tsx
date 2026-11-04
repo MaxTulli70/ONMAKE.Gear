@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.218'
+const VERSIONE = '0.6.219'
 const DATA = '03/11/2026' // date of this version, shown next to it
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
@@ -620,7 +620,7 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
   out.push(`<text x="${x}" y="21" style="font-size:14px${tinta ? `;fill:${colS}` : ''}">${sim}</text>`); x += 18
   const lavoro = a0 ? `${a0.nome}: ${a0.desc}` : d.compito ? `${tr('chat')}: ${d.compito}` : ''
   if (!compact) { // always both lines, as in Max's base
-    cella(150, `${tr('lavoro')}${tempo || d.el ? ' ' + (tempo || dur(d.el)) : ''}`, lavoro || cosa || (lavora ? tr('pensa…') : tr('in attesa')), lavora ? COL[livAdesso(d) ?? 'medium'] : undefined, undefined, undefined)
+    cella(210, `${tr('lavoro')}${tempo || d.el ? ' ' + (tempo || dur(d.el)) : ''}`, lavoro || cosa || (lavora ? tr('pensa…') : tr('in attesa')), lavora ? COL[livAdesso(d) ?? 'medium'] : undefined, undefined, undefined)
   }
   const w = Math.ceil(x + 2)
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${H}" viewBox="0 0 ${w} ${H}">${STILE}${out.join('')}</svg>`, width: w }
