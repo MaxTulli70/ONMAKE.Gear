@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.219'
+const VERSIONE = '0.6.220'
 const DATA = '03/11/2026' // date of this version, shown next to it
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
@@ -735,10 +735,10 @@ function svgGriglia(pl: Record<string, [number, number]>, tinta: boolean, attual
     return `<text x="0" y="${y}" class="mu">${i + 1}</text><rect x="12" y="${y - 9}" width="8" height="8" rx="2" style="fill:${tinta ? COL[k] : GRIGIO}"/>`
       + `<text x="26" y="${y}" class="sm"${on ? ` style="fill:${tinta ? COL[k] : GRIGIO}"` : ''}>${nomeMarcia(k)}</text>`
       + `<text x="82" y="${y}" class="mu">${mod[k]}</text><text x="130" y="${y}" class="mu">${tr(eff[k])}</text>`
-      + `<text x="208" y="${y}" class="mu" text-anchor="end">${n}</text>`
+      + `<text x="222" y="${y}" class="mu" text-anchor="end">${n}</text>`
       + `<text x="288" y="${y}"${n ? '' : ' class="mu"'} text-anchor="end">${kt(tk)}</text>`
   })
-  const testa = `<text x="0" y="10" class="sm">${tr('Tabella agenti')}</text><text x="82" y="24" class="mu sm">${tr('modello')}</text><text x="130" y="24" class="mu sm">${tr('effort')}</text><text x="208" y="24" class="mu sm" text-anchor="end">${tr('agenti')}</text><text x="288" y="24" class="mu sm" text-anchor="end">${tr('token')}</text>`
+  const testa = `<text x="0" y="10" class="sm">${tr('Tabella agenti')}</text><text x="82" y="24" class="mu sm">${tr('modello')}</text><text x="130" y="24" class="mu sm">${tr('effort')}</text><text x="222" y="24" class="mu sm" text-anchor="end">${tr('agenti')}</text><text x="288" y="24" class="mu sm" text-anchor="end">${tr('token')}</text>`
   return { source: `<svg xmlns="http://www.w3.org/2000/svg" width="292" height="114" viewBox="0 0 292 114">${STILE}${testa}${righe.join('')}</svg>`, width: 292 }
 }
 
