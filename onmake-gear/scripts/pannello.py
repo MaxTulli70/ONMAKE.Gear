@@ -520,7 +520,14 @@ if __name__ == "__main__":
 
         def scrivi():
             """Scrive le tre viste: live (dall'ultimo messaggio), workflow (dal reset), totale chat."""
-            global DA, VISTA, BASE
+            global DA, VISTA, BASE, LINGUA
+            # the language chosen in the bar (flags) is kept in a small file, so the open page follows it
+            try:
+                scelta = open(os.path.expanduser("~/.config/onmake-gear/lingua")).read().strip()
+                if scelta in LANGS:
+                    LINGUA = scelta
+            except OSError:
+                pass
             BASE = a.html
             DA = None
             r0 = riepilogo(sess)
