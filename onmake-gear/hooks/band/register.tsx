@@ -7,7 +7,7 @@ import type { Attivo, Dati, Passo, Sessione } from '../../types'
 const colMod = (m: string, eff = '') => /haiku/i.test(m) ? '#5f9a6c' : /sonnet/i.test(m) ? (/high|max/.test(eff) ? '#8a78b0' : '#5c82a8') : /opus/i.test(m) ? '#c0714f' : undefined
 const COL: Record<string, string> = { light: '#7bb8e8', medium: '#6fc08a', high: '#e8b64a', opus: '#a78bd0', max: '#d9694f' }
 // Same as plugin.json: the engine does not hand the version to the module.
-const VERSIONE = '0.6.216'
+const VERSIONE = '0.6.217'
 const DATA = '03/11/2026' // date of this version, shown next to it
 const GRIGIO = '#9a9aa5'
 const dati = atom({ plugin: 'onmake-gear', key: 'dati' } as const, null)
@@ -552,7 +552,7 @@ function svgRiga(d: Dati, tinta: boolean, compact: boolean, p: Passo | null, lav
   if (gruppo) {
   if (!compact) {
   if (d.ultra) cella(46, 'ultracode', 'ON', COL.max) // leftmost: when it appears the other cells stay where they are
-  cella(76, tr('agenti'), '', undefined, undefined, ag)
+  cella(82, tr('agenti'), '', undefined, undefined, ag)
   cella(38, tr('tk ag.'), tokAg > 0 ? (tokAg >= 1e4 && tokAg < 1e6 ? `${Math.round(tokAg / 1000)}k` : ktc(tokAg)) : '–')
   cella(70, tr('velocità'), vel)
   sp(4)
